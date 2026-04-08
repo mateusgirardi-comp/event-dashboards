@@ -14,7 +14,7 @@ FIREFLIES_GQL = 'https://api.fireflies.ai/graphql'
 
 COMPANIES = {
     'dLocal':       'dlocal',
-    'Wellhub':      'wellhub',
+    'Wellhub':      'wellhubinc',
     'Clara':        'claracc',
     'Grão Direto':  'graodireto',
     'Intelipost':   'intelipost',
