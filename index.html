@@ -237,7 +237,10 @@
       border-radius:10px; padding:10px 12px;
       box-shadow:var(--shadow); width:172px;
     }
-    .org-pname  { font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .org-pname-row { display:flex; align-items:center; gap:5px; }
+    .org-pname  { font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0; }
+    .org-pli    { font-size:11px; color:var(--blue); text-decoration:none; flex-shrink:0; line-height:1; }
+    .org-pli:hover { color:var(--accent); }
     .org-ptitle { font-size:10px; color:var(--muted); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .org-prole  { display:inline-block; margin-top:5px; padding:2px 7px; border-radius:4px; font-size:9px; font-weight:700; }
     .role-d { background:var(--accent-light); color:var(--accent); }
@@ -1077,7 +1080,10 @@ function renderCanvas(name, c, people) {
         pNode.style.top  = py + 'px';
         const roleCls = person.role === 'Decisor' ? 'role-d' : person.role === 'Influenciador' ? 'role-i' : 'role-u';
         pNode.innerHTML = `
-          <div class="org-pname">${esc(person.name || '—')}</div>
+          <div class="org-pname-row">
+            <div class="org-pname">${esc(person.name || '—')}</div>
+            ${person.linkedin ? `<a href="${esc(person.linkedin)}" target="_blank" class="org-pli" onclick="event.stopPropagation()" title="LinkedIn">↗</a>` : ''}
+          </div>
           ${person.job_title ? `<div class="org-ptitle">${esc(person.job_title)}</div>` : ''}
           <span class="org-prole ${roleCls}">${person.role}</span>
           ${person.last_meeting_date ? `<div class="org-pdate">📅 ${fmtShort(person.last_meeting_date)}</div>` : ''}`;
