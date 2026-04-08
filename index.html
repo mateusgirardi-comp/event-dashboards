@@ -648,7 +648,17 @@ let _coById   = null;   // record_id → { name, linkedin, lifecycleStatus }
 let _pByCoId  = null;   // record_id → [enriched person objects]
 let _dByCoId  = null;   // record_id → [deal objects]
 let _fetchP   = null;   // singleton promise
-const _briefCache = {};  // companyName → briefing object | 'loading' | null
+const BRIEF_STORE_KEY = 'event_briefings_v1';
+const _briefCache = (() => { try { return JSON.parse(localStorage.getItem(BRIEF_STORE_KEY) || '{}'); } catch { return {}; } })();
+function _saveBriefings() {
+  try {
+    const toSave = {};
+    for (const [k, v] of Object.entries(_briefCache)) {
+      if (v && typeof v === 'object' && v !== 'loading' && !v._error) toSave[k] = v;
+    }
+    localStorage.setItem(BRIEF_STORE_KEY, JSON.stringify(toSave));
+  } catch {}
+}
 
 function attioPost(path, body) {
   return fetch(`${ATTIO_BASE}${path}`, {
@@ -980,7 +990,9 @@ async function loadMapa(name, c) {
     fetchFireflies(name).then(ff => {
       if (currentName !== name) return;
       currentFF = ff;
-      renderPanelBody();  // re-render with meetings
+      renderPanelBody();
+      // Auto-generate briefing if not cached (fires after FF so context is complete)
+      if (!_briefCache[name]) generateBriefing(name);
     });
 
   } catch(err) {
@@ -1265,11 +1277,17 @@ function renderBriefingHtml(name) {
     </div>`;
   }
 
-  if (!b || b._error) {
+  if (!b) {
+    return `<div class="briefing-bar">
+      <span style="font-size:11px;color:var(--muted)"><span class="spinner-sm"></span>Aguardando dados para gerar briefing…</span>
+    </div>`;
+  }
+
+  if (b._error) {
     return `<div class="briefing-bar">
       <span style="font-size:11px;color:var(--muted)">🧠 Inteligência de Conta</span>
-      <button class="briefing-btn" onclick="generateBriefing('${name.replace(/'/g,"\\'")}')">🧠 Gerar Briefing</button>
-    </div>${b?._error ? `<p style="font-size:11px;color:var(--accent);margin-bottom:12px">Erro: ${esc(b._error)}</p>` : ''}`;
+      <button class="briefing-btn refresh" onclick="generateBriefing('${name.replace(/'/g,"\\'")}')">↺ Tentar novamente</button>
+    </div><p style="font-size:11px;color:var(--accent);margin-bottom:12px">Erro: ${esc(b._error)}</p>`;
   }
 
   // Has briefing
@@ -1539,6 +1557,7 @@ async function generateBriefing(name) {
   if (!c) return;
 
   _briefCache[name] = 'loading';
+  _saveBriefings();  // removes stale entry from localStorage immediately
   renderPanelBody();
 
   // Build context (same structure as graph.py)
@@ -1616,6 +1635,7 @@ async function generateBriefing(name) {
     } catch {
       _briefCache[name] = { resumo_executivo: raw, generated_at: new Date().toISOString() };
     }
+    _saveBriefings();
   } catch(err) {
     console.error('briefing error:', err);
     _briefCache[name] = { _error: err.message };
