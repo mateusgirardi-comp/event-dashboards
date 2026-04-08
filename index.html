@@ -157,7 +157,7 @@
     /* ── Drawer ── */
     .drawer {
       position: fixed; top: 0; right: 0; bottom: 0;
-      width: 440px; background: var(--card);
+      width: 560px; background: var(--card);
       box-shadow: -4px 0 24px rgba(0,0,0,0.12);
       z-index: 301;
       transform: translateX(100%);
@@ -252,6 +252,53 @@
       font-size: 11px; color: var(--accent); text-decoration: none; font-weight: 600;
     }
     .attio-link-btn:hover { text-decoration: underline; }
+
+    /* ── Org Chart ── */
+    .org-wrap {
+      position: relative; display: flex; flex-direction: column;
+      align-items: center; padding: 4px 8px 8px; min-height: 180px;
+    }
+    .org-svg {
+      position: absolute; top: 0; left: 0;
+      pointer-events: none; overflow: visible;
+    }
+    .org-company-node {
+      border: 2px solid var(--border); border-radius: 10px;
+      padding: 10px 22px; background: var(--card);
+      font-weight: 700; font-size: 15px; text-align: center;
+      box-shadow: var(--shadow); position: relative; z-index: 1;
+      white-space: nowrap;
+    }
+    .org-people-row {
+      display: flex; gap: 12px; flex-wrap: wrap;
+      justify-content: center; position: relative; z-index: 1;
+      margin-top: 36px;
+    }
+    .org-person-node {
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px 12px; background: var(--card);
+      width: 148px; text-align: center;
+      box-shadow: var(--shadow); position: relative; z-index: 1;
+    }
+    .org-person-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--accent-light); color: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; margin: 0 auto 7px;
+    }
+    .org-person-name { font-size: 12px; font-weight: 600; line-height: 1.3; }
+    .org-person-title { font-size: 10px; color: var(--muted); margin-top: 2px; line-height: 1.3;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .org-role-badge {
+      display: inline-block; margin-top: 5px; padding: 2px 7px;
+      border-radius: 4px; font-size: 10px; font-weight: 700;
+      background: var(--accent-light); color: var(--accent);
+    }
+    .org-person-li {
+      display: block; margin-top: 5px; font-size: 10px;
+      color: var(--blue); text-decoration: none;
+    }
+    .org-person-li:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -284,10 +331,10 @@
       <div id="d-score"></div>
     </div>
 
-    <!-- Buying center -->
+    <!-- Buying center / org chart -->
     <div class="drawer-section">
       <div class="drawer-section-title">Buying Center · via Attio</div>
-      <div id="d-people"><div class="people-state"><span class="spinner-sm"></span>Loading...</div></div>
+      <div id="d-org"><div class="people-state"><span class="spinner-sm"></span>Loading from Attio...</div></div>
     </div>
 
   </div>
@@ -582,6 +629,7 @@
 
 <script>
 const ATTIO_KEY = 'e1de8d13ba1fa4cf6b9de9afb61eab0ed2a7e72b25fbc92e619c29b4c9aa65c3';
+const ATTIO_BASE = 'https://api.attio.com/v2';
 
 const COMPANIES = {
   'dLocal':       { score: 90, ftes: 1415,  pes: 373,   growth: 19.7,  tier: 'High',     rec: 'Engage',  pain: 36, tech: 28, will: 26, segment: 'Fintech · Payments',          liSlug: 'dlocal' },
@@ -685,32 +733,60 @@ function openDrawer(name) {
     scoreSection.style.display = 'none';
   }
 
-  // People — show loading, then fetch
-  document.getElementById('d-people').innerHTML = '<div class="people-state"><span class="spinner-sm"></span>Loading from Attio...</div>';
+  // Org chart — show loading, then fetch
+  document.getElementById('d-org').innerHTML = '<div class="people-state"><span class="spinner-sm"></span>Loading from Attio...</div>';
 
   document.getElementById('drawer-overlay').classList.add('open');
   document.getElementById('drawer').classList.add('open');
 
-  loadPeople(name, c);
+  loadOrgChart(name, c);
 }
 
-async function loadPeople(name, c) {
-  const container = document.getElementById('d-people');
+// ── Attio helpers ──────────────────────────────────────────────
+function attioPost(path, body) {
+  return fetch(`${ATTIO_BASE}${path}`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${ATTIO_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+}
 
-  // Use cache if available
+function getPersonName(p) {
+  const arr = p.values?.name || [];
+  const n = arr[0] || {};
+  return n.full_name || `${n.first_name || ''} ${n.last_name || ''}`.trim() || 'Unknown';
+}
+function getPersonTitle(p) {
+  const arr = p.values?.job_title || p.values?.title || p.values?.primary_job_title || [];
+  return arr[0]?.value || '';
+}
+function getPersonLinkedIn(p) {
+  const arr = p.values?.linkedin_profile_url || p.values?.linkedin_profile || p.values?.linkedin || [];
+  const v = arr[0]?.value || arr[0]?.original_url || '';
+  return v;
+}
+function getPersonRole(p) {
+  // Try common custom attribute slugs for buying center role
+  const arr = p.values?.buying_center_role || p.values?.deal_role || p.values?.role || [];
+  return arr[0]?.value || arr[0]?.option?.title || '';
+}
+function getInitials(name) {
+  return name.split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
+}
+
+async function loadOrgChart(name, c) {
+  const container = document.getElementById('d-org');
   if (attioCache[name]) {
-    renderPeople(container, attioCache[name].company, attioCache[name].people);
+    renderOrgChart(name, attioCache[name].company, attioCache[name].people);
     return;
   }
 
   try {
-    // 1. Find company in Attio
-    const compResp = await fetch('https://api.attio.com/v2/objects/companies/records/query', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${ATTIO_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ filter: { name: { '$contains': name } }, limit: 1 })
+    // 1. Find company by name
+    const compResp = await attioPost('/objects/companies/records/query', {
+      filter: { name: { '$contains': name } }, limit: 1
     });
-    if (!compResp.ok) throw new Error(`Attio company query failed: ${compResp.status}`);
+    if (!compResp.ok) throw new Error(`Company lookup failed: ${compResp.status}`);
     const compData = await compResp.json();
     const company  = compData.data?.[0] || null;
 
@@ -722,25 +798,27 @@ async function loadPeople(name, c) {
 
     const recordId = company.id.record_id;
 
-    // 2. Fetch people at this company
-    const peopleResp = await fetch('https://api.attio.com/v2/objects/people/records/query', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${ATTIO_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        filter: {
-          company: {
-            '$record_reference': { target_object: 'companies', target_record_id: recordId }
-          }
-        },
-        limit: 30
-      })
-    });
-    if (!peopleResp.ok) throw new Error(`Attio people query failed: ${peopleResp.status}`);
-    const peopleData = await peopleResp.json();
-    const people = peopleData.data || [];
+    // 2. Fetch people — try filter formats in order until one works
+    const peopleFilters = [
+      { company: { record_id: { '$eq': recordId } } },
+      { employer: { record_id: { '$eq': recordId } } },
+      { company: { '$record_reference': { target_object: 'companies', target_record_id: recordId } } },
+    ];
+
+    let people = [];
+    for (const filter of peopleFilters) {
+      try {
+        const r = await attioPost('/objects/people/records/query', { filter, limit: 25 });
+        if (r.ok) {
+          const d = await r.json();
+          people = d.data || [];
+          break;
+        }
+      } catch (_) {}
+    }
 
     attioCache[name] = { company, people };
-    renderPeople(container, company, people);
+    renderOrgChart(name, company, people);
 
   } catch (err) {
     console.error('Attio error:', err);
@@ -748,47 +826,81 @@ async function loadPeople(name, c) {
   }
 }
 
-function renderPeople(container, company, people) {
-  const attioUrl = company
-    ? `https://app.attio.com/comp-tech/company/${company.id.record_id}/overview`
-    : null;
+function renderOrgChart(name, company, people) {
+  const container = document.getElementById('d-org');
+  const attioUrl  = company ? `https://app.attio.com/comp-tech/company/${company.id.record_id}/overview` : null;
 
-  if (people.length === 0) {
-    container.innerHTML = `
-      <div class="people-state">No contacts found in Attio</div>
-      ${attioUrl ? `<div style="text-align:center"><a href="${attioUrl}" target="_blank" class="attio-link-btn">Open in Attio ↗</a></div>` : ''}
-    `;
-    return;
-  }
-
-  const cards = people.map(p => {
-    const nameArr = p.values?.name || [];
-    const nameObj = nameArr[0] || {};
-    const fullName = nameObj.full_name || `${nameObj.first_name || ''} ${nameObj.last_name || ''}`.trim() || 'Unknown';
-    const initials = fullName.split(' ').map(w => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase();
-
-    const titleArr = p.values?.job_title || p.values?.title || [];
-    const title = titleArr[0]?.value || '';
-
-    const liArr = p.values?.linkedin_profile_url || p.values?.linkedin || [];
-    const li    = liArr[0]?.value || '';
-
+  const personCards = people.map((p, i) => {
+    const fullName = getPersonName(p);
+    const title    = getPersonTitle(p);
+    const li       = getPersonLinkedIn(p);
+    const role     = getPersonRole(p);
+    const initials = getInitials(fullName);
     return `
-      <div class="person-card">
-        <div class="person-avatar">${initials}</div>
-        <div class="person-info">
-          <div class="person-name">${fullName}</div>
-          ${title ? `<div class="person-title">${title}</div>` : ''}
-          ${li    ? `<a href="${li}" target="_blank" class="person-li">LinkedIn ↗</a>` : ''}
-        </div>
-      </div>
-    `;
+      <div class="org-person-node" id="org-p${i}">
+        <div class="org-person-avatar">${initials}</div>
+        <div class="org-person-name">${fullName}</div>
+        ${title ? `<div class="org-person-title">${title}</div>` : ''}
+        ${role  ? `<span class="org-role-badge">${role}</span>` : ''}
+        ${li    ? `<a href="${li}" target="_blank" class="org-person-li">LinkedIn ↗</a>` : ''}
+      </div>`;
   }).join('');
 
   container.innerHTML = `
-    <div class="people-list">${cards}</div>
-    ${attioUrl ? `<div style="text-align:center;margin-top:10px"><a href="${attioUrl}" target="_blank" class="attio-link-btn">Open in Attio ↗</a></div>` : ''}
+    <div class="org-wrap" id="org-wrap">
+      <div class="org-company-node" id="org-root">${name}</div>
+      <svg class="org-svg" id="org-svg" width="0" height="0"></svg>
+      ${people.length > 0
+        ? `<div class="org-people-row" id="org-persons">${personCards}</div>`
+        : `<div class="people-state" style="margin-top:28px">No contacts in Attio</div>`
+      }
+      ${attioUrl ? `<div style="text-align:center;margin-top:16px"><a href="${attioUrl}" target="_blank" class="attio-link-btn">Open in Attio ↗</a></div>` : ''}
+    </div>
   `;
+
+  if (people.length > 0) requestAnimationFrame(drawOrgLines);
+}
+
+function drawOrgLines() {
+  const wrap    = document.getElementById('org-wrap');
+  const svg     = document.getElementById('org-svg');
+  const root    = document.getElementById('org-root');
+  const persons = document.querySelectorAll('.org-person-node');
+  if (!wrap || !svg || !root || persons.length === 0) return;
+
+  const wR = wrap.getBoundingClientRect();
+  svg.setAttribute('width',  wR.width);
+  svg.setAttribute('height', wR.height);
+  svg.style.width  = wR.width + 'px';
+  svg.style.height = wR.height + 'px';
+
+  const rootR = root.getBoundingClientRect();
+  const rCX   = rootR.left - wR.left + rootR.width / 2;
+  const rBY   = rootR.bottom - wR.top;
+
+  let lines = '';
+  const stroke = 'stroke="#D1D5DB" stroke-width="1.5" stroke-linecap="round"';
+
+  if (persons.length === 1) {
+    const pR  = persons[0].getBoundingClientRect();
+    const pCX = pR.left - wR.left + pR.width / 2;
+    const pTY = pR.top  - wR.top;
+    const mY  = (rBY + pTY) / 2;
+    lines += `<path d="M${rCX},${rBY} L${rCX},${mY} L${pCX},${mY} L${pCX},${pTY}" fill="none" ${stroke}/>`;
+  } else {
+    const rects = Array.from(persons).map(n => {
+      const r = n.getBoundingClientRect();
+      return { cx: r.left - wR.left + r.width / 2, ty: r.top - wR.top };
+    });
+    const brY = rects[0].ty - 18;
+    lines += `<line x1="${rCX}" y1="${rBY}" x2="${rCX}" y2="${brY}" ${stroke}/>`;
+    lines += `<line x1="${rects[0].cx}" y1="${brY}" x2="${rects[rects.length-1].cx}" y2="${brY}" ${stroke}/>`;
+    rects.forEach(r => {
+      lines += `<line x1="${r.cx}" y1="${brY}" x2="${r.cx}" y2="${r.ty}" ${stroke}/>`;
+    });
+  }
+
+  svg.innerHTML = lines;
 }
 
 function closeDrawer() {
