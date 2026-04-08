@@ -116,6 +116,7 @@
     /* ── Last Interaction cell ── */
     .ix-date   { font-size:12px; font-weight:600; color:var(--text); }
     .ix-person { font-size:11px; color:var(--muted); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; }
+    .ix-title  { font-size:10px; color:#bbb; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; }
     /* ── Deal status ── */
     .ds-active { background:#dcfce7; color:#15803d; }
     .ds-won    { background:#dbeafe; color:#1d4ed8; }
@@ -648,7 +649,7 @@ function renderTable() {
     const ixCell = ix === undefined
       ? `<span class="spinner-sm" style="opacity:0.3"></span>`
       : ix
-        ? `<div class="ix-date">${fmtShort(ix.date)}</div><div class="ix-person">${esc(ix.person)}</div>`
+        ? `<div class="ix-date">${fmtShort(ix.date)}</div><div class="ix-person">${esc(ix.person)}</div>${ix.title ? `<div class="ix-title">${esc(ix.title)}</div>` : ''}`
         : `<span style="color:var(--muted);font-size:11px">—</span>`;
 
     const ds = getDealStatus(name);
@@ -706,7 +707,7 @@ function computeLastIx() {
       if (!p.last_meeting_date) continue;
       if (!best || p.last_meeting_date > best.last_meeting_date) best = p;
     }
-    _lastIx[name] = best ? { date: best.last_meeting_date, person: best.name || '?' } : false;
+    _lastIx[name] = best ? { date: best.last_meeting_date, person: best.name || '?', title: best.job_title || '' } : false;
   }
 }
 
