@@ -363,6 +363,29 @@
     .tl-label { font-size:11px; font-weight:600; }
     .tl-date  { font-size:10px; color:var(--muted); margin-left:6px; }
     .tl-detail { font-size:10px; color:var(--muted); margin-top:1px; }
+
+    /* Briefing */
+    .briefing-bar { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 0 12px; border-bottom:1px solid #F3F4F6; margin-bottom:16px; }
+    .briefing-btn {
+      display:flex; align-items:center; gap:6px; padding:6px 14px;
+      background:var(--indigo); color:#fff; border:none; border-radius:7px;
+      font-size:11px; font-weight:700; cursor:pointer; font-family:inherit;
+      transition:background 0.15s; white-space:nowrap;
+    }
+    .briefing-btn:hover { background:#3730a3; }
+    .briefing-btn:disabled { opacity:0.6; cursor:not-allowed; }
+    .briefing-btn.refresh { background:none; color:var(--indigo); border:1px solid #c7d2fe; }
+    .briefing-btn.refresh:hover { background:var(--indigo-light); }
+    .briefing-ts { font-size:10px; color:var(--muted); }
+    .briefing-panel { background:#F9FAFB; border:1px solid #E5E7EB; border-radius:10px; padding:14px; margin-bottom:16px; }
+    .briefing-section { margin-bottom:12px; }
+    .briefing-section:last-child { margin-bottom:0; }
+    .briefing-section-label {
+      font-size:9px; font-weight:700; text-transform:uppercase;
+      letter-spacing:0.09em; color:var(--muted); margin-bottom:5px;
+    }
+    .briefing-text { font-size:11px; color:var(--text); line-height:1.55; white-space:pre-wrap; }
+    .briefing-text strong { font-weight:700; }
   </style>
 </head>
 <body>
@@ -594,6 +617,9 @@ const ATTIO_BASE      = 'https://api.attio.com/v2';
 const FIREFLIES_KEY   = '35381824-8184-4800-ab0b-606086b44cb5';
 const FIREFLIES_GQL   = 'https://api.fireflies.ai/graphql';
 const COMP_DOMAIN     = 'comp.vc';
+const LITELLM_KEY     = 'sk-ckhXeKYV7QVQ-YrLZ5sXxA';
+const LITELLM_URL     = 'https://litellm.trycomp.io/v1/chat/completions';
+const LITELLM_MODEL   = 'claude-sonnet-4.5';
 
 const COMPANIES = {
   'dLocal':       { score:90,   ftes:1415,  pes:373,   growth:19.7,  tier:'High',     rec:'Engage',  pain:36, tech:28, will:26, segment:'Fintech · Payments',          liSlug:'dlocal' },
@@ -619,6 +645,7 @@ let _coById   = null;   // record_id → { name, linkedin, lifecycleStatus }
 let _pByCoId  = null;   // record_id → [enriched person objects]
 let _dByCoId  = null;   // record_id → [deal objects]
 let _fetchP   = null;   // singleton promise
+const _briefCache = {};  // companyName → briefing object | 'loading' | null
 
 function attioPost(path, body) {
   return fetch(`${ATTIO_BASE}${path}`, {
@@ -768,7 +795,13 @@ async function ensureAttioData() {
       if (r.ok) {
         const d = await r.json();
         for (const deal of d.data || []) {
-          const coList = deal.values?.associated_company || [];
+          // Try multiple possible field names for the company reference
+          const coList = deal.values?.associated_company
+            || deal.values?.associated_company_5
+            || deal.values?.associated_company_2
+            || deal.values?.company
+            || deal.values?.client
+            || [];
           const coA    = coList.find(v => v.active_until == null);
           const coId   = coA?.target_record_id;
           if (!coId) continue;
@@ -1205,8 +1238,62 @@ function renderPanelBody() {
   }
 }
 
+const BRIEFING_SECTIONS = [
+  { key:'resumo_executivo',    label:'Resumo Executivo' },
+  { key:'momento_de_negocio',  label:'Momento de Negócio' },
+  { key:'estrutura_hr',        label:'Estrutura de RH' },
+  { key:'dores_e_desafios',    label:'Dores e Desafios' },
+  { key:'operacao_hr',         label:'Operação de RH' },
+  { key:'mapa_relacionamento', label:'Mapa de Relacionamento' },
+  { key:'objecoes_bloqueios',  label:'Objeções / Bloqueios' },
+  { key:'proximo_passo',       label:'Próximo Passo' },
+];
+
+function renderBriefingHtml(name) {
+  const b = _briefCache[name];
+  const ts = b?.generated_at ? `Gerado ${fmtShort(b.generated_at)}` : '';
+
+  if (b === 'loading') {
+    return `<div class="briefing-bar">
+      <span style="font-size:11px;color:var(--muted)"><span class="spinner-sm"></span>Gerando briefing com Claude…</span>
+    </div>`;
+  }
+
+  if (!b || b._error) {
+    return `<div class="briefing-bar">
+      <span style="font-size:11px;color:var(--muted)">🧠 Inteligência de Conta</span>
+      <button class="briefing-btn" onclick="generateBriefing('${name.replace(/'/g,"\\'")}')">🧠 Gerar Briefing</button>
+    </div>${b?._error ? `<p style="font-size:11px;color:var(--accent);margin-bottom:12px">Erro: ${esc(b._error)}</p>` : ''}`;
+  }
+
+  // Has briefing
+  let sections = '';
+  for (const s of BRIEFING_SECTIONS) {
+    const val = b[s.key];
+    if (!val) continue;
+    // Render **bold** markdown inline
+    const rendered = esc(val).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    sections += `<div class="briefing-section">
+      <div class="briefing-section-label">${s.label}</div>
+      <div class="briefing-text">${rendered}</div>
+    </div>`;
+  }
+
+  return `<div class="briefing-bar">
+    <span style="font-size:11px;font-weight:700;color:var(--indigo)">🧠 Inteligência de Conta</span>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span class="briefing-ts">${ts}</span>
+      <button class="briefing-btn refresh" onclick="generateBriefing('${name.replace(/'/g,"\\'")}')">↺ Atualizar</button>
+    </div>
+  </div>
+  <div class="briefing-panel">${sections}</div>`;
+}
+
 function renderOverview(c, people, deals, ff) {
   let html = '';
+
+  // Briefing bar (always shown at top)
+  html += renderBriefingHtml(currentName);
 
   // Score breakdown
   if (c.score != null) {
@@ -1293,24 +1380,38 @@ function renderOverview(c, people, deals, ff) {
 
   // Reuniões Fireflies
   if (ff.length > 0) {
-    html += `<div class="panel-section"><div class="psection-title">🎙 Reuniões (${ff.length})</div>`;
+    html += `<div class="panel-section"><div class="psection-title">🎙 Reuniões · Fireflies (${ff.length})</div>`;
     for (const m of ff.slice(0,5)) {
-      const compP   = (m.attendees||[]).filter(a=>a.email?.includes(COMP_DOMAIN)).map(a=>a.name||a.email?.split('@')[0]||'').filter(Boolean);
-      const clientP = (m.attendees||[]).filter(a=>a.email&&!a.email.includes(COMP_DOMAIN)).map(a=>a.name||a.email?.split('@')[0]||'').filter(Boolean);
+      // All attendees combined (Fireflies often has no email domain info)
+      const allAtts  = (m.attendees||[]).map(a=>a.name||(a.email?.split('@')[0])||'').filter(Boolean);
+      const compP    = (m.attendees||[]).filter(a=>a.email?.includes(COMP_DOMAIN)).map(a=>a.name||a.email?.split('@')[0]||'').filter(Boolean);
+      const clientP  = (m.attendees||[]).filter(a=>a.email&&!a.email.includes(COMP_DOMAIN)).map(a=>a.name||a.email?.split('@')[0]||'').filter(Boolean);
+      // If no email-domain separation, show all attendees as participants
+      const showComp   = compP.length > 0;
+      const showClient = clientP.length > 0;
+      const showAll    = !showComp && !showClient && allAtts.length > 0;
       html += `<div class="meeting-item">
         <div class="meeting-row">
           <div class="meeting-title">${esc(m.title||'Reunião')}</div>
           <div class="meeting-date">${fmtShort(m.date)}</div>
         </div>
-        ${compP.length   ? `<div class="meeting-ppl"><span class="comp-name">Comp:</span> ${esc(compP.join(', '))}</div>` : ''}
-        ${clientP.length ? `<div class="meeting-ppl"><span class="client-name">Cliente:</span> ${esc(clientP.join(', '))}</div>` : ''}
+        ${showComp   ? `<div class="meeting-ppl"><span class="comp-name">Comp:</span> ${esc(compP.join(', '))}</div>` : ''}
+        ${showClient ? `<div class="meeting-ppl"><span class="client-name">Cliente:</span> ${esc(clientP.join(', '))}</div>` : ''}
+        ${showAll    ? `<div class="meeting-ppl"><span style="color:var(--text);font-weight:500">Participantes:</span> ${esc(allAtts.join(', '))}</div>` : ''}
         ${m.duration_min ? `<div class="meeting-dur">${m.duration_min}min</div>` : ''}
       </div>`;
     }
     if (ff.length > 5) html += `<p style="font-size:10px;color:var(--muted);text-align:center">+${ff.length-5} more in Timeline</p>`;
     html += '</div>';
-  } else if (currentFF !== null && typeof _ffCache[currentName] === 'undefined') {
-    html += `<div class="panel-section"><div class="psection-title">🎙 Reuniões</div><div class="panel-loading"><span class="spinner-sm"></span>Loading meetings…</div></div>`;
+  } else {
+    const ffKey = currentName;
+    const ffLoading = typeof _ffCache[ffKey] === 'undefined';
+    const ffEmpty   = Array.isArray(_ffCache[ffKey]) && _ffCache[ffKey].length === 0;
+    if (ffLoading) {
+      html += `<div class="panel-section"><div class="psection-title">🎙 Reuniões · Fireflies</div><div class="panel-loading"><span class="spinner-sm"></span>Searching Fireflies…</div></div>`;
+    } else if (ffEmpty) {
+      html += `<div class="panel-section"><div class="psection-title">🎙 Reuniões · Fireflies</div><div class="psection-empty">No meetings found in Fireflies.</div></div>`;
+    }
   }
 
   return html;
@@ -1399,6 +1500,122 @@ if (typeof ResizeObserver !== 'undefined') {
   new ResizeObserver(() => {
     if (currentName) setTimeout(fitView, 50);
   }).observe(document.getElementById('mapa-viewport'));
+}
+
+/* ══════════════════════════════════════════════════════════════
+   BRIEFING — Generate via LiteLLM (same as Hustler backend)
+══════════════════════════════════════════════════════════════ */
+const BRIEFING_SYSTEM = `Você é um analista de inteligência comercial da Comp (HR-as-a-Service, líder no Brasil).
+Sua tarefa: analisar dados de CRM + transcrições de reuniões e gerar um briefing executivo sobre a conta.
+
+Retorne APENAS um JSON válido (sem markdown fence, sem texto fora do JSON) com esta estrutura exata:
+{
+  "resumo_executivo": "...",
+  "momento_de_negocio": "...",
+  "estrutura_hr": "...",
+  "dores_e_desafios": "...",
+  "operacao_hr": "...",
+  "mapa_relacionamento": "...",
+  "objecoes_bloqueios": "...",
+  "proximo_passo": "..."
+}
+
+Regras:
+- Use bullets com "- " para múltiplos pontos dentro de cada campo
+- Use **negrito** para destacar nomes ou termos-chave
+- Seja direto e acionável — escreva para um AE que vai entrar em uma reunião amanhã
+- Se não houver informação suficiente para um campo, escreva null
+- Não invente informações — baseie-se apenas nos dados fornecidos`;
+
+async function generateBriefing(name) {
+  if (!name) return;
+  const c = COMPANIES[name];
+  if (!c) return;
+
+  _briefCache[name] = 'loading';
+  renderPanelBody();
+
+  // Build context (same structure as graph.py)
+  const parts = [];
+
+  // Company info
+  parts.push(`## Empresa\n- Nome: ${name}\n- Segmento: ${c.segment}\n- FTEs: ${c.ftes}\n- ICP Score: ${c.score ?? 'N/A'}\n- Tier: ${c.tier}`);
+
+  // People
+  if (currentPeople.length) {
+    const lines = currentPeople.map(p => {
+      let l = `- **${p.name || '?'}** (${p.job_title || '?'}) — ${p.role}`;
+      if (p.touchpoint_count) l += ` — ${p.touchpoint_count} touchpoints`;
+      if (p.last_meeting_date) l += ` — último meeting: ${p.last_meeting_date}`;
+      if (p.first_interaction_date) l += ` — primeiro contato: ${p.first_interaction_date}`;
+      return l;
+    });
+    parts.push(`## Contatos\n${lines.join('\n')}`);
+  }
+
+  // Deals
+  if (currentDeals.length) {
+    const lines = currentDeals.map(d => {
+      let l = `- **${d.name || '?'}** | Estágio: ${d.stage || '?'} | BDR: ${d.bdr || '?'}`;
+      if (d.date_mql)  l += ` | MQL: ${d.date_mql}`;
+      if (d.date_sal)  l += ` | SAL: ${d.date_sal}`;
+      if (d.date_won)  l += ` | WON ✓: ${d.date_won}`;
+      if (d.date_lost) l += ` | LOST: ${d.date_lost}`;
+      if (d.lost_reason) l += ` | Motivo: ${d.lost_reason}`;
+      return l;
+    });
+    parts.push(`## Deals\n${lines.join('\n')}`);
+  }
+
+  // Fireflies meetings (metadata only)
+  if (currentFF.length) {
+    const blocks = currentFF.slice(0, 5).map(m => {
+      const atts = (m.attendees || []).map(a => a.name || a.email || '').filter(Boolean);
+      return `**${m.title || 'Reunião'}** (${m.date || '?'})\nParticipantes: ${atts.join(', ') || 'N/A'}${m.duration_min ? `\nDuração: ${m.duration_min}min` : ''}`;
+    });
+    parts.push(`## Reuniões (Fireflies)\n\n${blocks.join('\n\n---\n\n')}`);
+  }
+
+  if (!parts.length) {
+    _briefCache[name] = null;
+    renderPanelBody();
+    return;
+  }
+
+  const context = parts.join('\n\n');
+
+  try {
+    const resp = await fetch(LITELLM_URL, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${LITELLM_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: LITELLM_MODEL,
+        max_tokens: 2500,
+        messages: [
+          { role: 'system', content: BRIEFING_SYSTEM },
+          { role: 'user', content: `Gere o briefing para a conta **${name}**:\n\n${context}` },
+        ],
+      }),
+    });
+    if (!resp.ok) throw new Error(`LiteLLM ${resp.status}`);
+    const data = await resp.json();
+    let raw = data.choices?.[0]?.message?.content?.trim() || '';
+    // Strip markdown fence if present
+    const fenceMatch = raw.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+    if (fenceMatch) raw = fenceMatch[1];
+    try {
+      const briefing = JSON.parse(raw);
+      briefing.generated_at = new Date().toISOString();
+      _briefCache[name] = briefing;
+    } catch {
+      _briefCache[name] = { resumo_executivo: raw, generated_at: new Date().toISOString() };
+    }
+  } catch(err) {
+    console.error('briefing error:', err);
+    _briefCache[name] = { _error: err.message };
+  }
+
+  if (currentName === name) renderPanelBody();
 }
 </script>
 </body>
