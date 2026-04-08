@@ -1491,7 +1491,7 @@ function fmtDate(d) {
 }
 function fmtShort(d) {
   if (!d) return '—';
-  try { return new Date(d).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'}); }
+  try { return new Date(d).toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}); }
   catch { return d; }
 }
 
