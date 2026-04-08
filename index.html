@@ -1343,7 +1343,7 @@ function renderOverview(c, people, deals, ff) {
           ${d.date_mql  ? `<span class="dl"><b>MQL</b> ${fmtShort(d.date_mql)}</span>` : ''}
           ${d.date_sal  ? `<span class="dl"><b>SAL</b> ${fmtShort(d.date_sal)}</span>` : ''}
           ${d.date_won  ? `<span class="dl"><b>Won</b> ${fmtShort(d.date_won)}</span>` : ''}
-          ${d.date_lost ? `<span class="dl"><b>Lost</b> ${fmtShort(d.date_lost)}</span>` : ''}
+          ${d.date_lost ? `<span class="dl"><b>Lost</b> ${fmtShort(d.date_lost)}${d.lost_reason ? ` · ${esc(d.lost_reason)}` : ''}</span>` : ''}
           ${d.value_amount != null ? `<span class="dl" style="margin-left:auto"><b>${d.value_currency||''} ${(+d.value_amount).toLocaleString()}</b></span>` : ''}
         </div>
         ${(d.deal_source || d.bdr) ? `<div class="deal-meta">
