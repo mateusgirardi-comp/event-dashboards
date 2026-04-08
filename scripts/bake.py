@@ -148,10 +148,10 @@ for name, slug in COMPANIES.items():
             'limit': 5,
             'filter': {'linkedin': {'$contains': slug}}
         })
-        matched = next(
-            (rec for rec in d.get('data', []) if norm_li(a_val(rec['values'].get('linkedin', []))) == slug),
-            None
-        )
+        candidates = [rec for rec in d.get('data', []) if norm_li(a_val(rec['values'].get('linkedin', []))) == slug]
+        # prefer records with a score (avoids picking empty duplicate records)
+        scored = [r for r in candidates if a_val(r['values'].get('score_company', []))]
+        matched = scored[0] if scored else (candidates[0] if candidates else None)
         # fallback: name search
         if not matched:
             d2 = attio_post('/objects/companies/records/query', {
