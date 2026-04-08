@@ -521,7 +521,9 @@ let _sortCol = 'score';
 let _sortDir = 'desc';
 const LAST_IX_KEY = 'event_lastix_v1';
 const LAST_IX_TTL = 4 * 60 * 60 * 1000;  // 4 hours
-const _lastIx = (() => { try { const s = JSON.parse(localStorage.getItem(LAST_IX_KEY) || 'null'); return (s && Date.now() - s._ts < LAST_IX_TTL) ? s.data : {}; } catch { return {}; } })();
+const _lastIxStore = (() => { try { return JSON.parse(localStorage.getItem(LAST_IX_KEY) || 'null'); } catch { return null; } })();
+const _lastIxFresh = !!(_lastIxStore && Date.now() - _lastIxStore._ts < LAST_IX_TTL);
+const _lastIx = _lastIxFresh ? _lastIxStore.data : {};
 function _saveLastIx() { try { localStorage.setItem(LAST_IX_KEY, JSON.stringify({ _ts: Date.now(), data: _lastIx })); } catch {} }
 
 function tierOrder(t) {
@@ -563,10 +565,12 @@ function renderTable() {
     const growthCls  = c.growth > 0 ? 'growth-pos' : c.growth < 0 ? 'growth-neg' : 'growth-neu';
     const growthStr  = c.growth > 0 ? `+${c.growth}%` : `${c.growth}%`;
     const rankEl     = isDisq ? `<span class="rank">—</span>` : rank <= 2 ? `<span class="rank top">${rank}</span>` : `<span class="rank">${rank}</span>`;
-    const ix = _lastIx[name];
-    const ixCell = ix
-      ? `<div class="ix-date">${fmtShort(ix.date)}</div><div class="ix-person">${esc(ix.person)}</div>`
-      : `<span class="spinner-sm" style="opacity:0.3"></span>`;
+    const ix = _lastIx[name];  // undefined=pending, false=no data, object=has data
+    const ixCell = ix === undefined
+      ? `<span class="spinner-sm" style="opacity:0.3"></span>`
+      : ix
+        ? `<div class="ix-date">${fmtShort(ix.date)}</div><div class="ix-person">${esc(ix.person)}</div>`
+        : `<span style="color:var(--muted);font-size:11px">—</span>`;
     return `<tr${isDisq ? ' class="disqualified"' : ''} onclick="openMapa('${name.replace(/'/g,"\\'")}',event)">
       <td class="center">${rankEl}</td>
       <td>
@@ -597,28 +601,25 @@ function renderTable() {
 
 // Populate last interaction from Attio on page load
 function loadLastInteractions() {
-  // Check if all non-disq companies already have cached data
-  const needsFetch = Object.entries(COMPANIES).some(([n, c]) => !c.disq && !_lastIx[n]);
-  if (!needsFetch) return;  // all cached, skip Attio call
+  // If cache is fresh (< 4h), skip Attio entirely — even if some entries are missing
+  if (_lastIxFresh) return;
 
   ensureAttioData().then(() => {
-    let updated = false;
     for (const [name, c] of Object.entries(COMPANIES)) {
-      if (c.disq || _lastIx[name]) continue;
+      if (c.disq) continue;
       const recId = _coByLi[c.liSlug] || _coByName[name.toLowerCase()];
-      if (!recId) continue;
+      if (!recId) { _lastIx[name] = false; continue; }
       const people = _pByCoId[recId] || [];
       let best = null;
       for (const p of people) {
         if (!p.last_meeting_date) continue;
         if (!best || p.last_meeting_date > best.last_meeting_date) best = p;
       }
-      if (best) {
-        _lastIx[name] = { date: best.last_meeting_date, person: best.name || '?' };
-        updated = true;
-      }
+      // false = checked, no data — prevents re-fetch next load
+      _lastIx[name] = best ? { date: best.last_meeting_date, person: best.name || '?' } : false;
     }
-    if (updated) { _saveLastIx(); renderTable(); }
+    _saveLastIx();
+    renderTable();
   }).catch(() => {});
 }
 
