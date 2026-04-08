@@ -589,9 +589,11 @@ function renderTable() {
   const names = Object.keys(COMPANIES);
   names.sort((a, b) => {
     const ca = COMPANIES[a], cb = COMPANIES[b];
-    // disqualified always at bottom regardless of sort
-    if (ca.disq && !cb.disq) return 1;
-    if (!ca.disq && cb.disq) return -1;
+    // effective disq: overridden companies are never treated as disqualified
+    const da = _ov[a]?.tier ? false : ca.disq;
+    const db = _ov[b]?.tier ? false : cb.disq;
+    if (da && !db) return 1;
+    if (!da && db) return -1;
     let va, vb;
     if      (_sortCol === 'ftes')   { va = ca.ftes;               vb = cb.ftes; }
     else if (_sortCol === 'growth') { va = ca.growth ?? -999;      vb = cb.growth ?? -999; }
