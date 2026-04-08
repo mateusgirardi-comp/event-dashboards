@@ -23,6 +23,8 @@
       --yellow-light: #fefce8;
       --blue:         #2563eb;
       --blue-light:   #eff6ff;
+      --orange:       #ea580c;
+      --orange-light: #fff7ed;
       --radius:       10px;
       --shadow:       0 1px 4px rgba(0,0,0,0.07);
     }
@@ -47,122 +49,115 @@
       height: 56px;
     }
     .header-left { display: flex; align-items: center; gap: 14px; }
-    header h1 {
-      font-size: 15px; font-weight: 700;
-      color: #fff; letter-spacing: 0.01em;
-    }
-    .header-divider {
-      width: 1px; height: 18px;
-      background: rgba(255,255,255,0.3);
-    }
-    .header-sub {
-      font-size: 12px; color: rgba(255,255,255,0.7);
-      font-weight: 400;
-    }
-    .header-right {
-      font-size: 11px; color: rgba(255,255,255,0.6);
-    }
+    header h1 { font-size: 15px; font-weight: 700; color: #fff; letter-spacing: 0.01em; }
+    .header-divider { width: 1px; height: 18px; background: rgba(255,255,255,0.3); }
+    .header-sub { font-size: 12px; color: rgba(255,255,255,0.7); font-weight: 400; }
+    .header-right { font-size: 11px; color: rgba(255,255,255,0.6); }
 
     /* ── Main layout ── */
-    main { padding: 28px 32px; max-width: 1200px; margin: 0 auto; }
+    main { padding: 28px 32px; max-width: 1280px; margin: 0 auto; }
 
-    /* ── Context banner ── */
-    .context-banner {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 16px 20px;
-      margin-bottom: 24px;
-      box-shadow: var(--shadow);
-      display: flex; align-items: flex-start; gap: 14px;
-      border-left: 4px solid var(--accent);
+    /* ── KPI row ── */
+    .kpi-row { display: flex; gap: 10px; margin-bottom: 24px; }
+    .kpi-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px 20px;
+      box-shadow: var(--shadow); flex: 1; position: relative; overflow: hidden;
     }
-    .context-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
-    .context-title {
-      font-size: 12px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 0.07em; color: var(--accent); margin-bottom: 4px;
+    .kpi-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: var(--border);
     }
-    .context-text { font-size: 13px; color: var(--muted); }
+    .kpi-card.accent::before { background: var(--accent); }
+    .kpi-card.green::before  { background: var(--green); }
+    .kpi-card.yellow::before { background: var(--yellow); }
+    .kpi-card.muted::before  { background: var(--muted); }
+    .kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+    .kpi-value { font-size: 28px; font-weight: 700; line-height: 1; color: var(--text); }
+    .kpi-value.red   { color: var(--accent); }
+    .kpi-value.green { color: var(--green); }
+    .kpi-value.muted { color: var(--muted); }
 
     /* ── Section header ── */
-    .section-header {
-      display: flex; align-items: center; justify-content: space-between;
-      margin-bottom: 14px;
-    }
-    .section-title {
-      font-size: 13px; font-weight: 700; color: var(--text);
-      text-transform: uppercase; letter-spacing: 0.05em;
-    }
-    .section-count {
-      font-size: 12px; color: var(--muted);
-    }
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .section-title { font-size: 13px; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: 0.05em; }
+    .section-sub   { font-size: 12px; color: var(--muted); margin-top: 2px; }
 
     /* ── Table ── */
     .table-wrap {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow-x: auto;
-      box-shadow: var(--shadow);
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow-x: auto; box-shadow: var(--shadow);
+      margin-bottom: 32px;
     }
-    table { width: 100%; border-collapse: collapse; min-width: 700px; }
+    table { width: 100%; border-collapse: collapse; min-width: 860px; }
     thead th {
-      padding: 11px 16px; text-align: left; font-size: 11px;
-      text-transform: uppercase; letter-spacing: 0.06em;
+      padding: 11px 14px; text-align: left; font-size: 10px;
+      text-transform: uppercase; letter-spacing: 0.07em;
       color: var(--muted); border-bottom: 1px solid var(--border);
-      white-space: nowrap; background: var(--card);
-      font-weight: 600;
+      white-space: nowrap; background: var(--card); font-weight: 600;
     }
-    thead th:first-child { width: 42px; text-align: center; }
+    thead th.center { text-align: center; }
     tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
     tbody tr:last-child { border-bottom: none; }
     tbody tr:hover { background: #fafafa; }
-    tbody td { padding: 13px 16px; font-size: 13px; vertical-align: middle; }
-    tbody td:first-child { text-align: center; }
+    tbody tr.disqualified { opacity: 0.55; }
+    tbody td { padding: 12px 14px; font-size: 13px; vertical-align: middle; }
+    tbody td.center { text-align: center; }
 
-    /* rank number */
+    /* rank */
     .rank {
       display: inline-flex; align-items: center; justify-content: center;
-      width: 26px; height: 26px; border-radius: 50%;
-      font-size: 12px; font-weight: 700; color: var(--muted);
-      background: #f3f4f6;
+      width: 24px; height: 24px; border-radius: 50%;
+      font-size: 11px; font-weight: 700; color: var(--muted); background: #f3f4f6;
     }
     .rank.top { background: var(--accent-light); color: var(--accent); }
 
+    /* company */
     .company-name { font-weight: 600; color: var(--text); }
-    .company-segment { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .company-name a { color: var(--text); text-decoration: none; }
+    .company-name a:hover { color: var(--accent); text-decoration: underline; }
+    .company-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
-    /* priority badge */
+    /* score bar */
+    .score-wrap { display: flex; align-items: center; gap: 8px; }
+    .score-num { font-weight: 700; font-size: 13px; width: 26px; text-align: right; flex-shrink: 0; }
+    .score-bar-bg {
+      flex: 1; height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; min-width: 60px;
+    }
+    .score-bar-fill { height: 100%; border-radius: 99px; }
+    .fill-red    { background: var(--accent); }
+    .fill-orange { background: var(--orange); }
+    .fill-yellow { background: var(--yellow); }
+    .fill-muted  { background: #ccc; }
+
+    /* sub-scores */
+    .sub-scores { display: flex; flex-direction: column; gap: 3px; }
+    .sub-score-row { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+    .sub-score-row span:first-child { width: 70px; flex-shrink: 0; }
+    .sub-score-val { font-weight: 600; color: var(--text); width: 20px; text-align: right; }
+
+    /* badges */
     .badge {
-      display: inline-block; padding: 3px 9px; border-radius: 20px;
+      display: inline-block; padding: 3px 8px; border-radius: 20px;
       font-size: 11px; font-weight: 700; white-space: nowrap;
     }
     .badge-red    { background: var(--accent-light); color: var(--accent); }
+    .badge-orange { background: var(--orange-light); color: var(--orange); }
     .badge-yellow { background: var(--yellow-light); color: var(--yellow); }
-    .badge-green  { background: var(--green-light);  color: var(--green); }
     .badge-blue   { background: var(--blue-light);   color: var(--blue); }
     .badge-muted  { background: #f3f4f6; color: var(--muted); }
+    .badge-green  { background: var(--green-light);  color: var(--green); }
 
-    /* notes cell */
-    .notes-cell {
-      font-size: 12px; color: var(--muted);
-      max-width: 340px;
-    }
-    .notes-cell em { color: #bbb; font-style: italic; }
+    /* growth */
+    .growth-pos { color: var(--green); font-weight: 600; }
+    .growth-neg { color: var(--accent); font-weight: 600; }
+    .growth-neu { color: var(--muted); font-weight: 600; }
 
-    /* status pill */
-    .status-dot {
-      display: inline-block; width: 7px; height: 7px;
-      border-radius: 50%; margin-right: 5px; vertical-align: middle;
-    }
+    /* disqualified reason */
+    .disq-reason { font-size: 11px; color: var(--muted); font-style: italic; }
 
     /* ── Footer ── */
-    footer {
-      margin-top: 32px;
-      text-align: center;
-      font-size: 11px; color: var(--muted);
-      padding-bottom: 32px;
-    }
+    footer { margin-top: 8px; text-align: center; font-size: 11px; color: var(--muted); padding-bottom: 32px; }
   </style>
 </head>
 <body>
@@ -173,170 +168,295 @@
     <div class="header-divider"></div>
     <span class="header-sub">Event Prioritization · Chris · Abr 2026</span>
   </div>
-  <div class="header-right">Gerado em 08 Abr 2026</div>
+  <div class="header-right">Tyrion · 08 Abr 2026</div>
 </header>
 
 <main>
 
-  <div class="context-banner">
-    <div class="context-icon">🎯</div>
-    <div>
-      <div class="context-title">Contexto do evento</div>
-      <div class="context-text">Lista de empresas priorizadas pelo Cleito para o Chris acompanhar no evento. Use as colunas de prioridade e contexto para orientar as conversas.</div>
+  <!-- KPIs -->
+  <div class="kpi-row">
+    <div class="kpi-card accent">
+      <div class="kpi-label">Prioridade Alta</div>
+      <div class="kpi-value red">2</div>
+    </div>
+    <div class="kpi-card yellow">
+      <div class="kpi-label">Prioridade Média</div>
+      <div class="kpi-value">1</div>
+    </div>
+    <div class="kpi-card muted">
+      <div class="kpi-label">Prioridade Baixa</div>
+      <div class="kpi-value muted">7</div>
+    </div>
+    <div class="kpi-card muted">
+      <div class="kpi-label">Fora do ICP</div>
+      <div class="kpi-value muted">2</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">Total de Empresas</div>
+      <div class="kpi-value">12</div>
     </div>
   </div>
 
+  <!-- Table -->
   <div class="section-header">
     <div>
       <div class="section-title">Empresas Priorizadas</div>
+      <div class="section-sub">Ordenado por score ICP · dados via Tyrion</div>
     </div>
-    <div class="section-count">12 empresas</div>
   </div>
 
   <div class="table-wrap">
     <table>
       <thead>
         <tr>
-          <th>#</th>
+          <th class="center">#</th>
           <th>Empresa</th>
-          <th>Segmento</th>
-          <th>Prioridade</th>
-          <th>Status Comp</th>
-          <th>Contexto / Angle</th>
+          <th class="center">FTEs</th>
+          <th class="center">PEs</th>
+          <th class="center">Crescimento HC</th>
+          <th>Score ICP</th>
+          <th>Tier</th>
+          <th class="center">Recomendação</th>
         </tr>
       </thead>
       <tbody>
 
+        <!-- 1. dLocal — score 90 -->
         <tr>
-          <td><span class="rank top">1</span></td>
+          <td class="center"><span class="rank top">1</span></td>
           <td>
-            <div class="company-name">dLocal</div>
+            <div class="company-name"><a href="https://www.linkedin.com/company/dlocal/" target="_blank">dLocal</a></div>
+            <div class="company-meta">Fintech · Pagamentos</div>
           </td>
-          <td>Fintech · Pagamentos</td>
+          <td class="center">1.415</td>
+          <td class="center">373</td>
+          <td class="center"><span class="growth-pos">+19,7%</span></td>
+          <td>
+            <div class="score-wrap">
+              <span class="score-num" style="color:var(--accent)">90</span>
+              <div class="score-bar-bg"><div class="score-bar-fill fill-red" style="width:90%"></div></div>
+            </div>
+          </td>
           <td><span class="badge badge-red">Alta</span></td>
-          <td><span class="badge badge-muted">—</span></td>
-          <td class="notes-cell"><em>Adicionar contexto</em></td>
+          <td class="center"><span class="badge badge-red">Abordar</span></td>
         </tr>
 
+        <!-- 2. Wellhub — score 88 -->
         <tr>
-          <td><span class="rank top">2</span></td>
+          <td class="center"><span class="rank top">2</span></td>
           <td>
-            <div class="company-name">Grão Direto</div>
+            <div class="company-name"><a href="https://www.linkedin.com/company/wellhub/" target="_blank">Wellhub</a></div>
+            <div class="company-meta">Benefits · Wellness</div>
           </td>
-          <td>Agro · Commodities</td>
+          <td class="center">2.285</td>
+          <td class="center">510</td>
+          <td class="center"><span class="growth-pos">+38,3%</span></td>
+          <td>
+            <div class="score-wrap">
+              <span class="score-num" style="color:var(--accent)">88</span>
+              <div class="score-bar-bg"><div class="score-bar-fill fill-red" style="width:88%"></div></div>
+            </div>
+          </td>
           <td><span class="badge badge-red">Alta</span></td>
-          <td><span class="badge badge-muted">—</span></td>
-          <td class="notes-cell"><em>Adicionar contexto</em></td>
+          <td class="center"><span class="badge badge-red">Abordar</span></td>
         </tr>
 
+        <!-- 3. Clara — score 61 -->
         <tr>
-          <td><span class="rank top">3</span></td>
+          <td class="center"><span class="rank">3</span></td>
           <td>
-            <div class="company-name">Wellhub</div>
+            <div class="company-name"><a href="https://www.linkedin.com/company/claracc/" target="_blank">Clara</a></div>
+            <div class="company-meta">Fintech · Despesas</div>
           </td>
-          <td>Benefits · Wellness</td>
-          <td><span class="badge badge-red">Alta</span></td>
-          <td><span class="badge badge-muted">—</span></td>
-          <td class="notes-cell"><em>Adicionar contexto</em></td>
-        </tr>
-
-        <tr>
-          <td><span class="rank top">4</span></td>
+          <td class="center">612</td>
+          <td class="center">107</td>
+          <td class="center"><span class="growth-pos">+22,9%</span></td>
           <td>
-            <div class="company-name">Clara</div>
+            <div class="score-wrap">
+              <span class="score-num" style="color:var(--yellow)">61</span>
+              <div class="score-bar-bg"><div class="score-bar-fill fill-yellow" style="width:61%"></div></div>
+            </div>
           </td>
-          <td>Fintech · Despesas</td>
-          <td><span class="badge badge-red">Alta</span></td>
-          <td><span class="badge badge-muted">—</span></td>
-          <td class="notes-cell"><em>Adicionar contexto</em></td>
-        </tr>
-
-        <tr>
-          <td><span class="rank">5</span></td>
-          <td>
-            <div class="company-name">Swap</div>
-          </td>
-          <td>Fintech · BaaS</td>
           <td><span class="badge badge-yellow">Média</span></td>
-          <td><span class="badge badge-muted">—</span></td>
-          <td class="notes-cell"><em>Adicionar contexto</em></td>
+          <td class="center"><span class="badge badge-yellow">Abordar</span></td>
         </tr>
 
+        <!-- 4. Grão Direto — score 48 -->
         <tr>
-          <td><span class="rank">6</span></td>
+          <td class="center"><span class="rank">4</span></td>
           <td>
-            <div class="company-name">Meli</div>
+            <div class="company-name"><a href="https://www.linkedin.com/company/graodireto/" target="_blank">Grão Direto</a></div>
+            <div class="company-meta">Agro · Commodities</div>
           </td>
-          <td>E-commerce · Fintech</td>
-          <td><span class="badge badge-yellow">Média</span></td>
-          <td><span class="badge badge-muted">—</span></td>
-          <td class="notes-cell"><em>Adicionar contexto</em></td>
+          <td class="center">191</td>
+          <td class="center">65</td>
+          <td class="center"><span class="growth-pos">+11,4%</span></td>
+          <td>
+            <div class="score-wrap">
+              <span class="score-num" style="color:var(--muted)">48</span>
+              <div class="score-bar-bg"><div class="score-bar-fill fill-muted" style="width:48%"></div></div>
+            </div>
+          </td>
+          <td><span class="badge badge-muted">Baixa</span></td>
+          <td class="center"><span class="badge badge-muted">Monitorar</span></td>
         </tr>
 
+        <!-- 5. Intelipost — score 48 -->
         <tr>
-          <td><span class="rank">7</span></td>
+          <td class="center"><span class="rank">5</span></td>
           <td>
-            <div class="company-name">Rivio</div>
+            <div class="company-name"><a href="https://www.linkedin.com/company/intelipost/" target="_blank">Intelipost</a></div>
+            <div class="company-meta">Logística · SaaS</div>
           </td>
-          <td>HR Tech</td>
-          <td><span class="badge badge-yellow">Média</span></td>
-          <td><span class="badge badge-muted">—</span></td>
-          <td class="notes-cell"><em>Adicionar contexto</em></td>
+          <td class="center">254</td>
+          <td class="center">41</td>
+          <td class="center"><span class="growth-neg">-3,4%</span></td>
+          <td>
+            <div class="score-wrap">
+              <span class="score-num" style="color:var(--muted)">48</span>
+              <div class="score-bar-bg"><div class="score-bar-fill fill-muted" style="width:48%"></div></div>
+            </div>
+          </td>
+          <td><span class="badge badge-muted">Baixa</span></td>
+          <td class="center"><span class="badge badge-muted">Abordar</span></td>
         </tr>
 
+        <!-- 6. Swap — score 46 -->
         <tr>
-          <td><span class="rank">8</span></td>
+          <td class="center"><span class="rank">6</span></td>
           <td>
-            <div class="company-name">180 Seguros</div>
+            <div class="company-name"><a href="https://www.linkedin.com/company/swapfinancial/" target="_blank">Swap</a></div>
+            <div class="company-meta">Fintech · BaaS</div>
           </td>
-          <td>Insurtech</td>
-          <td><span class="badge badge-yellow">Média</span></td>
-          <td><span class="badge badge-muted">—</span></td>
-          <td class="notes-cell"><em>Adicionar contexto</em></td>
+          <td class="center">237</td>
+          <td class="center">88</td>
+          <td class="center"><span class="growth-pos">+32,8%</span></td>
+          <td>
+            <div class="score-wrap">
+              <span class="score-num" style="color:var(--muted)">46</span>
+              <div class="score-bar-bg"><div class="score-bar-fill fill-muted" style="width:46%"></div></div>
+            </div>
+          </td>
+          <td><span class="badge badge-muted">Baixa</span></td>
+          <td class="center"><span class="badge badge-muted">Monitorar</span></td>
         </tr>
 
+        <!-- 7. 180 Seguros — score 42 -->
         <tr>
-          <td><span class="rank">9</span></td>
+          <td class="center"><span class="rank">7</span></td>
           <td>
-            <div class="company-name">Netlex</div>
+            <div class="company-name"><a href="https://www.linkedin.com/company/180-seguros/" target="_blank">180 Seguros</a></div>
+            <div class="company-meta">Insurtech</div>
           </td>
-          <td>Legal Tech</td>
-          <td><span class="badge badge-yellow">Média</span></td>
-          <td><span class="badge badge-muted">—</span></td>
-          <td class="notes-cell"><em>Adicionar contexto</em></td>
+          <td class="center">119</td>
+          <td class="center">48</td>
+          <td class="center"><span class="growth-pos">+38,8%</span></td>
+          <td>
+            <div class="score-wrap">
+              <span class="score-num" style="color:var(--muted)">42</span>
+              <div class="score-bar-bg"><div class="score-bar-fill fill-muted" style="width:42%"></div></div>
+            </div>
+          </td>
+          <td><span class="badge badge-muted">Baixa</span></td>
+          <td class="center"><span class="badge badge-muted">Monitorar</span></td>
         </tr>
 
+        <!-- 8. Netlex — score 42 -->
         <tr>
-          <td><span class="rank">10</span></td>
+          <td class="center"><span class="rank">8</span></td>
           <td>
-            <div class="company-name">Intelipost</div>
+            <div class="company-name"><a href="https://www.linkedin.com/company/netlex-io/" target="_blank">Netlex</a></div>
+            <div class="company-meta">Legal Tech</div>
           </td>
-          <td>Logística · SaaS</td>
-          <td><span class="badge badge-yellow">Média</span></td>
-          <td><span class="badge badge-muted">—</span></td>
-          <td class="notes-cell"><em>Adicionar contexto</em></td>
+          <td class="center">259</td>
+          <td class="center">79</td>
+          <td class="center"><span class="growth-pos">+24,9%</span></td>
+          <td>
+            <div class="score-wrap">
+              <span class="score-num" style="color:var(--muted)">42</span>
+              <div class="score-bar-bg"><div class="score-bar-fill fill-muted" style="width:42%"></div></div>
+            </div>
+          </td>
+          <td><span class="badge badge-muted">Baixa</span></td>
+          <td class="center"><span class="badge badge-muted">Monitorar</span></td>
         </tr>
 
+        <!-- 9. Ascenty — score 39 -->
         <tr>
-          <td><span class="rank">11</span></td>
+          <td class="center"><span class="rank">9</span></td>
           <td>
-            <div class="company-name">Medway</div>
+            <div class="company-name"><a href="https://www.linkedin.com/company/ascenty/" target="_blank">Ascenty</a></div>
+            <div class="company-meta">Data Centers · Infra</div>
           </td>
-          <td>Edtech · Saúde</td>
-          <td><span class="badge badge-yellow">Média</span></td>
-          <td><span class="badge badge-muted">—</span></td>
-          <td class="notes-cell"><em>Adicionar contexto</em></td>
+          <td class="center">910</td>
+          <td class="center">30</td>
+          <td class="center"><span class="growth-pos">+13,2%</span></td>
+          <td>
+            <div class="score-wrap">
+              <span class="score-num" style="color:var(--muted)">39</span>
+              <div class="score-bar-bg"><div class="score-bar-fill fill-muted" style="width:39%"></div></div>
+            </div>
+          </td>
+          <td><span class="badge badge-muted">Muito baixa</span></td>
+          <td class="center"><span class="badge badge-muted">Monitorar</span></td>
         </tr>
 
+        <!-- 10. Medway — score 30 -->
         <tr>
-          <td><span class="rank">12</span></td>
+          <td class="center"><span class="rank">10</span></td>
           <td>
-            <div class="company-name">Ascenty</div>
+            <div class="company-name"><a href="https://www.linkedin.com/company/medway-educacao-medica/" target="_blank">Medway</a></div>
+            <div class="company-meta">Edtech · Saúde</div>
           </td>
-          <td>Data Centers · Infra</td>
-          <td><span class="badge badge-yellow">Média</span></td>
-          <td><span class="badge badge-muted">—</span></td>
-          <td class="notes-cell"><em>Adicionar contexto</em></td>
+          <td class="center">345</td>
+          <td class="center">42</td>
+          <td class="center"><span class="growth-pos">+19,9%</span></td>
+          <td>
+            <div class="score-wrap">
+              <span class="score-num" style="color:var(--muted)">30</span>
+              <div class="score-bar-bg"><div class="score-bar-fill fill-muted" style="width:30%"></div></div>
+            </div>
+          </td>
+          <td><span class="badge badge-muted">Muito baixa</span></td>
+          <td class="center"><span class="badge badge-muted">Monitorar</span></td>
+        </tr>
+
+        <!-- 11. Meli — Não é ICP -->
+        <tr class="disqualified">
+          <td class="center"><span class="rank">—</span></td>
+          <td>
+            <div class="company-name"><a href="https://www.linkedin.com/company/mercadolibre/" target="_blank">Meli</a></div>
+            <div class="company-meta">E-commerce · Fintech</div>
+          </td>
+          <td class="center">66.193</td>
+          <td class="center">11.496</td>
+          <td class="center"><span class="growth-pos">+33,5%</span></td>
+          <td>
+            <div class="score-wrap">
+              <span class="score-num" style="color:var(--muted)">—</span>
+            </div>
+          </td>
+          <td><span class="badge badge-muted">Não é ICP</span></td>
+          <td class="center"><span class="disq-reason">Muito grande (&gt;5k FTEs)</span></td>
+        </tr>
+
+        <!-- 12. Rivio — Não é ICP -->
+        <tr class="disqualified">
+          <td class="center"><span class="rank">—</span></td>
+          <td>
+            <div class="company-name"><a href="https://www.linkedin.com/company/riviotech/" target="_blank">Rivio</a></div>
+            <div class="company-meta">HR Tech</div>
+          </td>
+          <td class="center">102</td>
+          <td class="center">31</td>
+          <td class="center"><span class="growth-neu">0%</span></td>
+          <td>
+            <div class="score-wrap">
+              <span class="score-num" style="color:var(--muted)">—</span>
+            </div>
+          </td>
+          <td><span class="badge badge-muted">Não é ICP</span></td>
+          <td class="center"><span class="disq-reason">Sem sinal de crescimento</span></td>
         </tr>
 
       </tbody>
@@ -346,7 +466,7 @@
 </main>
 
 <footer>
-  Comp · Event Prioritization · Abr 2026
+  Comp · Event Prioritization · Tyrion · Abr 2026
 </footer>
 
 </body>
