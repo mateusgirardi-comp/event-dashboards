@@ -672,7 +672,6 @@ function renderTable() {
 // Populate last interaction from Attio on page load
 function computeLastIx() {
   for (const [name, c] of Object.entries(COMPANIES)) {
-    if (c.disq) continue;
     const recId = _coByLi?.[c.liSlug] || _coByName?.[name.toLowerCase()];
     if (!recId) { _lastIx[name] = false; continue; }
     const people = _pByCoId?.[recId] || [];
