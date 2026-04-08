@@ -711,7 +711,7 @@ function seniorityN(title) {
   const cxo = ['ceo','cto','cfo','coo','chro'];
   if (cxo.some(kw => new RegExp('(?<![a-z])' + kw + '(?![a-z])').test(t))) return 0;
   if (['chief','president','founder','co-founder','owner'].some(kw => t.includes(kw))) return 0;
-  if ([' vp ','vp ','vice president','svp'].some(kw => t.includes(kw))) return 1;
+  if (/\bvp\b/.test(t) || ['vice president','svp'].some(kw => t.includes(kw))) return 1;
   if (['director','diretor','head of'].some(kw => t.includes(kw)) || /\bhead\b/.test(t)) return 2;
   if (['manager','gerente',' lead','senior'].some(kw => t.includes(kw))) return 3;
   return 4;
