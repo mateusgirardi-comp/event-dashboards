@@ -798,11 +798,13 @@ async function loadOrgChart(name, c) {
 
     const recordId = company.id.record_id;
 
-    // 2. Fetch people — try filter formats in order until one works
+    // 2. Fetch people — try filter formats, then fallback to full scan
     const peopleFilters = [
-      { company: { record_id: { '$eq': recordId } } },
+      { company:  { record_id: { '$eq': recordId } } },
       { employer: { record_id: { '$eq': recordId } } },
-      { company: { '$record_reference': { target_object: 'companies', target_record_id: recordId } } },
+      { company:  { '$record_reference': { target_object: 'companies', target_record_id: recordId } } },
+      { employer: { '$record_reference': { target_object: 'companies', target_record_id: recordId } } },
+      { company:  { '$any_of': [{ target_record_id: recordId }] } },
     ];
 
     let people = [];
@@ -811,8 +813,27 @@ async function loadOrgChart(name, c) {
         const r = await attioPost('/objects/people/records/query', { filter, limit: 25 });
         if (r.ok) {
           const d = await r.json();
-          people = d.data || [];
-          break;
+          if ((d.data || []).length > 0) { people = d.data; break; }
+        }
+      } catch (_) {}
+    }
+
+    // Fallback: fetch all people and filter client-side by company record_id
+    if (people.length === 0) {
+      try {
+        let offset = 0, done = false;
+        while (!done) {
+          const r = await attioPost('/objects/people/records/query', { limit: 500, offset });
+          if (!r.ok) break;
+          const d = await r.json();
+          const batch = d.data || [];
+          const matched = batch.filter(p =>
+            JSON.stringify(p.values || '').includes(recordId)
+          );
+          people.push(...matched);
+          if (batch.length < 500) done = true;
+          else offset += batch.length;
+          if (offset > 2000) done = true; // safety cap
         }
       } catch (_) {}
     }
