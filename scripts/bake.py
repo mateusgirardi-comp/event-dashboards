@@ -59,10 +59,18 @@ def a_interaction(arr):
     return {'date': (a.get('interacted_at') or '')[:10] or None}
 
 def p_name(vals):
-    fn = a_val(vals.get('first_name', [])) or ''
-    ln = a_val(vals.get('last_name', [])) or ''
-    name = f'{fn} {ln}'.strip()
-    return name or a_val(vals.get('name', [])) or None
+    # Attio personal-name type: { full_name, first_name, last_name } inside the item
+    arr = vals.get('name', [])
+    if arr:
+        a = next((v for v in arr if v.get('active_until') is None), None)
+        if a:
+            full = (a.get('full_name') or '').strip()
+            if full: return full
+            fn = (a.get('first_name') or '').strip()
+            ln = (a.get('last_name') or '').strip()
+            name = f'{fn} {ln}'.strip()
+            if name: return name
+    return None
 
 def p_co_id(vals):
     for key in ('company', 'companies'):
