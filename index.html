@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Event Prioritization — Comp</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:           #F5F5F5;
+      --card:         #FFFFFF;
+      --border:       #E8E8E8;
+      --text:         #111111;
+      --muted:        #888888;
+      --accent:       #F4364C;
+      --accent-dark:  #C92236;
+      --accent-light: #FFF0F1;
+      --green:        #16a34a;
+      --green-light:  #f0fdf4;
+      --yellow:       #ca8a04;
+      --yellow-light: #fefce8;
+      --blue:         #2563eb;
+      --blue-light:   #eff6ff;
+      --radius:       10px;
+      --shadow:       0 1px 4px rgba(0,0,0,0.07);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--accent);
+      padding: 0 32px;
+      display: flex; align-items: center;
+      justify-content: space-between; flex-wrap: wrap; gap: 12px;
+      position: sticky; top: 0; z-index: 100;
+      height: 56px;
+    }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    header h1 {
+      font-size: 15px; font-weight: 700;
+      color: #fff; letter-spacing: 0.01em;
+    }
+    .header-divider {
+      width: 1px; height: 18px;
+      background: rgba(255,255,255,0.3);
+    }
+    .header-sub {
+      font-size: 12px; color: rgba(255,255,255,0.7);
+      font-weight: 400;
+    }
+    .header-right {
+      font-size: 11px; color: rgba(255,255,255,0.6);
+    }
+
+    /* ── Main layout ── */
+    main { padding: 28px 32px; max-width: 1200px; margin: 0 auto; }
+
+    /* ── Context banner ── */
+    .context-banner {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+      display: flex; align-items: flex-start; gap: 14px;
+      border-left: 4px solid var(--accent);
+    }
+    .context-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+    .context-title {
+      font-size: 12px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.07em; color: var(--accent); margin-bottom: 4px;
+    }
+    .context-text { font-size: 13px; color: var(--muted); }
+
+    /* ── Section header ── */
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .section-title {
+      font-size: 13px; font-weight: 700; color: var(--text);
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .section-count {
+      font-size: 12px; color: var(--muted);
+    }
+
+    /* ── Table ── */
+    .table-wrap {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow-x: auto;
+      box-shadow: var(--shadow);
+    }
+    table { width: 100%; border-collapse: collapse; min-width: 700px; }
+    thead th {
+      padding: 11px 16px; text-align: left; font-size: 11px;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--muted); border-bottom: 1px solid var(--border);
+      white-space: nowrap; background: var(--card);
+      font-weight: 600;
+    }
+    thead th:first-child { width: 42px; text-align: center; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #fafafa; }
+    tbody td { padding: 13px 16px; font-size: 13px; vertical-align: middle; }
+    tbody td:first-child { text-align: center; }
+
+    /* rank number */
+    .rank {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 26px; height: 26px; border-radius: 50%;
+      font-size: 12px; font-weight: 700; color: var(--muted);
+      background: #f3f4f6;
+    }
+    .rank.top { background: var(--accent-light); color: var(--accent); }
+
+    .company-name { font-weight: 600; color: var(--text); }
+    .company-segment { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* priority badge */
+    .badge {
+      display: inline-block; padding: 3px 9px; border-radius: 20px;
+      font-size: 11px; font-weight: 700; white-space: nowrap;
+    }
+    .badge-red    { background: var(--accent-light); color: var(--accent); }
+    .badge-yellow { background: var(--yellow-light); color: var(--yellow); }
+    .badge-green  { background: var(--green-light);  color: var(--green); }
+    .badge-blue   { background: var(--blue-light);   color: var(--blue); }
+    .badge-muted  { background: #f3f4f6; color: var(--muted); }
+
+    /* notes cell */
+    .notes-cell {
+      font-size: 12px; color: var(--muted);
+      max-width: 340px;
+    }
+    .notes-cell em { color: #bbb; font-style: italic; }
+
+    /* status pill */
+    .status-dot {
+      display: inline-block; width: 7px; height: 7px;
+      border-radius: 50%; margin-right: 5px; vertical-align: middle;
+    }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 32px;
+      text-align: center;
+      font-size: 11px; color: var(--muted);
+      padding-bottom: 32px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>Comp</h1>
+    <div class="header-divider"></div>
+    <span class="header-sub">Event Prioritization · Chris · Abr 2026</span>
+  </div>
+  <div class="header-right">Gerado em 08 Abr 2026</div>
+</header>
+
+<main>
+
+  <div class="context-banner">
+    <div class="context-icon">🎯</div>
+    <div>
+      <div class="context-title">Contexto do evento</div>
+      <div class="context-text">Lista de empresas priorizadas pelo Cleito para o Chris acompanhar no evento. Use as colunas de prioridade e contexto para orientar as conversas.</div>
+    </div>
+  </div>
+
+  <div class="section-header">
+    <div>
+      <div class="section-title">Empresas Priorizadas</div>
+    </div>
+    <div class="section-count">12 empresas</div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Empresa</th>
+          <th>Segmento</th>
+          <th>Prioridade</th>
+          <th>Status Comp</th>
+          <th>Contexto / Angle</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <tr>
+          <td><span class="rank top">1</span></td>
+          <td>
+            <div class="company-name">dLocal</div>
+          </td>
+          <td>Fintech · Pagamentos</td>
+          <td><span class="badge badge-red">Alta</span></td>
+          <td><span class="badge badge-muted">—</span></td>
+          <td class="notes-cell"><em>Adicionar contexto</em></td>
+        </tr>
+
+        <tr>
+          <td><span class="rank top">2</span></td>
+          <td>
+            <div class="company-name">Grão Direto</div>
+          </td>
+          <td>Agro · Commodities</td>
+          <td><span class="badge badge-red">Alta</span></td>
+          <td><span class="badge badge-muted">—</span></td>
+          <td class="notes-cell"><em>Adicionar contexto</em></td>
+        </tr>
+
+        <tr>
+          <td><span class="rank top">3</span></td>
+          <td>
+            <div class="company-name">Wellhub</div>
+          </td>
+          <td>Benefits · Wellness</td>
+          <td><span class="badge badge-red">Alta</span></td>
+          <td><span class="badge badge-muted">—</span></td>
+          <td class="notes-cell"><em>Adicionar contexto</em></td>
+        </tr>
+
+        <tr>
+          <td><span class="rank top">4</span></td>
+          <td>
+            <div class="company-name">Clara</div>
+          </td>
+          <td>Fintech · Despesas</td>
+          <td><span class="badge badge-red">Alta</span></td>
+          <td><span class="badge badge-muted">—</span></td>
+          <td class="notes-cell"><em>Adicionar contexto</em></td>
+        </tr>
+
+        <tr>
+          <td><span class="rank">5</span></td>
+          <td>
+            <div class="company-name">Swap</div>
+          </td>
+          <td>Fintech · BaaS</td>
+          <td><span class="badge badge-yellow">Média</span></td>
+          <td><span class="badge badge-muted">—</span></td>
+          <td class="notes-cell"><em>Adicionar contexto</em></td>
+        </tr>
+
+        <tr>
+          <td><span class="rank">6</span></td>
+          <td>
+            <div class="company-name">Meli</div>
+          </td>
+          <td>E-commerce · Fintech</td>
+          <td><span class="badge badge-yellow">Média</span></td>
+          <td><span class="badge badge-muted">—</span></td>
+          <td class="notes-cell"><em>Adicionar contexto</em></td>
+        </tr>
+
+        <tr>
+          <td><span class="rank">7</span></td>
+          <td>
+            <div class="company-name">Rivio</div>
+          </td>
+          <td>HR Tech</td>
+          <td><span class="badge badge-yellow">Média</span></td>
+          <td><span class="badge badge-muted">—</span></td>
+          <td class="notes-cell"><em>Adicionar contexto</em></td>
+        </tr>
+
+        <tr>
+          <td><span class="rank">8</span></td>
+          <td>
+            <div class="company-name">180 Seguros</div>
+          </td>
+          <td>Insurtech</td>
+          <td><span class="badge badge-yellow">Média</span></td>
+          <td><span class="badge badge-muted">—</span></td>
+          <td class="notes-cell"><em>Adicionar contexto</em></td>
+        </tr>
+
+        <tr>
+          <td><span class="rank">9</span></td>
+          <td>
+            <div class="company-name">Netlex</div>
+          </td>
+          <td>Legal Tech</td>
+          <td><span class="badge badge-yellow">Média</span></td>
+          <td><span class="badge badge-muted">—</span></td>
+          <td class="notes-cell"><em>Adicionar contexto</em></td>
+        </tr>
+
+        <tr>
+          <td><span class="rank">10</span></td>
+          <td>
+            <div class="company-name">Intelipost</div>
+          </td>
+          <td>Logística · SaaS</td>
+          <td><span class="badge badge-yellow">Média</span></td>
+          <td><span class="badge badge-muted">—</span></td>
+          <td class="notes-cell"><em>Adicionar contexto</em></td>
+        </tr>
+
+        <tr>
+          <td><span class="rank">11</span></td>
+          <td>
+            <div class="company-name">Medway</div>
+          </td>
+          <td>Edtech · Saúde</td>
+          <td><span class="badge badge-yellow">Média</span></td>
+          <td><span class="badge badge-muted">—</span></td>
+          <td class="notes-cell"><em>Adicionar contexto</em></td>
+        </tr>
+
+        <tr>
+          <td><span class="rank">12</span></td>
+          <td>
+            <div class="company-name">Ascenty</div>
+          </td>
+          <td>Data Centers · Infra</td>
+          <td><span class="badge badge-yellow">Média</span></td>
+          <td><span class="badge badge-muted">—</span></td>
+          <td class="notes-cell"><em>Adicionar contexto</em></td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+</main>
+
+<footer>
+  Comp · Event Prioritization · Abr 2026
+</footer>
+
+</body>
+</html>
