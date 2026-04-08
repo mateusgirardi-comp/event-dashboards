@@ -125,14 +125,38 @@
     .badge.overridden { outline:2px dashed currentColor; outline-offset:2px; }
     .badge.overridden::after { content:'✎'; font-size:9px; margin-left:3px; opacity:0.6; }
     /* ── Notes cell ── */
-    .notes-input {
-      font-size:12px; color:var(--text); font-family:inherit;
-      background:transparent; border:none; outline:none;
-      width:100%; min-width:120px; cursor:text;
-      padding:2px 4px; border-radius:4px;
+    .notes-cell-text {
+      font-size:12px; color:var(--text); cursor:pointer;
+      max-width:200px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      display:block; padding:2px 4px; border-radius:4px;
+      border:1px solid transparent;
     }
-    .notes-input:focus { background:#f9fafb; outline:1px solid var(--border); }
-    .notes-input::placeholder { color:#ccc; font-style:italic; }
+    .notes-cell-text:hover { border-color:var(--border); background:#f9fafb; }
+    .notes-cell-text.empty { color:#ccc; font-style:italic; }
+
+    /* Note modal */
+    .note-modal-backdrop {
+      position:fixed; inset:0; background:rgba(0,0,0,0.35); z-index:500;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .note-modal {
+      background:#fff; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,0.18);
+      padding:20px; width:420px; max-width:90vw; display:flex; flex-direction:column; gap:12px;
+    }
+    .note-modal-header { display:flex; align-items:center; justify-content:space-between; }
+    .note-modal-title { font-size:13px; font-weight:700; }
+    .note-modal-close { cursor:pointer; font-size:16px; color:var(--muted); background:none; border:none; line-height:1; }
+    .note-modal-ta {
+      font-size:13px; font-family:inherit; color:var(--text);
+      border:1px solid var(--border); border-radius:8px; padding:10px 12px;
+      resize:vertical; min-height:100px; width:100%; outline:none; line-height:1.55;
+    }
+    .note-modal-ta:focus { border-color:#aaa; }
+    .note-modal-save {
+      align-self:flex-end; padding:7px 18px; border-radius:8px; font-size:12px; font-weight:700;
+      background:var(--accent); color:#fff; border:none; cursor:pointer;
+    }
+    .note-modal-save:hover { background:var(--accent-dark); }
 
     /* ── Footer ── */
     footer { margin-top:8px; text-align:center; font-size:11px; color:var(--muted); padding-bottom:32px; }
@@ -632,11 +656,11 @@ function renderTable() {
     const dsCls   = { active:'ds-active',   won:'ds-won', lost:'ds-lost', none:'ds-none' }[ds];
     const dsCell  = `<span class="badge ${dsCls}">${dsLabel}</span>`;
 
-    const noteVal = esc(_ov[name]?.notes || '');
-    const noteCell = `<input class="notes-input" placeholder="Add note…" value="${noteVal}"
-      onclick="event.stopPropagation()"
-      onblur="saveNote('${name.replace(/'/g,"\\'")}', this.value)"
-      onkeydown="if(event.key==='Enter')this.blur()">`;
+    const noteRaw  = _ov[name]?.notes || '';
+    const noteVal  = esc(noteRaw);
+    const noteCell = `<span class="notes-cell-text${noteRaw ? '' : ' empty'}"
+      onclick="openNoteModal('${name.replace(/'/g,"\\'")}',event)"
+      title="${noteVal}">${noteRaw ? noteVal : 'Add note…'}</span>`;
 
     const nEsc = name.replace(/'/g,"\\'");
     return `<tr${effectiveDisq ? ' class="disqualified"' : ''} onclick="openMapa('${nEsc}',event)">
@@ -1756,6 +1780,41 @@ if (SD?.generated_at) {
 }
 renderTable();
 loadLastInteractions();
+
+// ── Note modal ────────────────────────────────────────────────
+let _noteModalName = null;
+function openNoteModal(name, ev) {
+  ev.stopPropagation();
+  _noteModalName = name;
+  const val = _ov[name]?.notes || '';
+  const bd = document.createElement('div');
+  bd.className = 'note-modal-backdrop';
+  bd.id = 'note-modal-backdrop';
+  bd.innerHTML = `
+    <div class="note-modal" onclick="event.stopPropagation()">
+      <div class="note-modal-header">
+        <span class="note-modal-title">${esc(name)}</span>
+        <button class="note-modal-close" onclick="closeNoteModal()">✕</button>
+      </div>
+      <textarea class="note-modal-ta" id="note-modal-ta" placeholder="Add note…">${esc(val)}</textarea>
+      <button class="note-modal-save" onclick="saveNoteModal()">Save</button>
+    </div>`;
+  bd.addEventListener('click', closeNoteModal);
+  document.body.appendChild(bd);
+  const ta = document.getElementById('note-modal-ta');
+  ta.focus();
+  ta.selectionStart = ta.selectionEnd = ta.value.length;
+  ta.addEventListener('keydown', e => { if (e.key === 'Escape') closeNoteModal(); });
+}
+function closeNoteModal() {
+  document.getElementById('note-modal-backdrop')?.remove();
+  _noteModalName = null;
+}
+function saveNoteModal() {
+  const val = document.getElementById('note-modal-ta')?.value || '';
+  if (_noteModalName) saveNote(_noteModalName, val);
+  closeNoteModal();
+}
 </script>
 </body>
 </html>
