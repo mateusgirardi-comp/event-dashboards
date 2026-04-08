@@ -60,24 +60,6 @@
     /* ── Main ── */
     main { padding: 28px 32px; max-width: 1280px; margin: 0 auto; }
 
-    /* ── KPI row ── */
-    .kpi-row { display: flex; gap: 10px; margin-bottom: 24px; }
-    .kpi-card {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 18px 20px;
-      box-shadow: var(--shadow); flex: 1; position: relative; overflow: hidden;
-    }
-    .kpi-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--border); }
-    .kpi-card.accent::before { background:var(--accent); }
-    .kpi-card.green::before  { background:var(--green); }
-    .kpi-card.yellow::before { background:var(--yellow); }
-    .kpi-card.muted::before  { background:var(--muted); }
-    .kpi-label { font-size:10px; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); margin-bottom:6px; font-weight:600; }
-    .kpi-value { font-size:28px; font-weight:700; line-height:1; }
-    .kpi-value.red   { color:var(--accent); }
-    .kpi-value.green { color:var(--green); }
-    .kpi-value.muted { color:var(--muted); }
-
     /* ── Section header ── */
     .section-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
     .section-title { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; }
@@ -125,6 +107,15 @@
     .growth-neg { color:var(--accent); font-weight:600; }
     .growth-neu { color:var(--muted); font-weight:600; }
     .disq-reason { font-size:11px; color:var(--muted); font-style:italic; }
+    /* ── Sortable headers ── */
+    .th-sort { cursor:pointer; user-select:none; }
+    .th-sort:hover { color:var(--text); }
+    .th-sort::after { content:''; margin-left:3px; opacity:0.25; font-size:9px; }
+    .th-sort.asc::after  { content:'↑'; opacity:1; color:var(--accent); }
+    .th-sort.desc::after { content:'↓'; opacity:1; color:var(--accent); }
+    /* ── Last Interaction cell ── */
+    .ix-date   { font-size:12px; font-weight:600; color:var(--text); }
+    .ix-person { font-size:11px; color:var(--muted); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; }
 
     /* ── Footer ── */
     footer { margin-top:8px; text-align:center; font-size:11px; color:var(--muted); padding-bottom:32px; }
@@ -466,144 +457,28 @@
 </header>
 
 <main>
-  <div class="kpi-row">
-    <div class="kpi-card accent"><div class="kpi-label">High Priority</div><div class="kpi-value red">2</div></div>
-    <div class="kpi-card yellow"><div class="kpi-label">Mid Priority</div><div class="kpi-value">1</div></div>
-    <div class="kpi-card muted"><div class="kpi-label">Low Priority</div><div class="kpi-value muted">7</div></div>
-    <div class="kpi-card muted"><div class="kpi-label">Out of ICP</div><div class="kpi-value muted">2</div></div>
-    <div class="kpi-card green"><div class="kpi-label">Total Companies</div><div class="kpi-value">12</div></div>
-  </div>
-
   <div class="section-header">
     <div>
       <div class="section-title">Prioritized Companies</div>
-      <div class="section-sub">Sorted by ICP score · data via Tyrion · click a row to open account map</div>
+      <div class="section-sub">Click a column header to sort · click a row to open account map</div>
     </div>
   </div>
 
   <div class="table-wrap">
-    <table>
+    <table id="companies-table">
       <thead>
         <tr>
           <th class="center">#</th>
           <th>Company</th>
-          <th class="center">FTEs</th>
-          <th class="center">PEs</th>
-          <th class="center">HC Growth</th>
-          <th>ICP Score</th>
-          <th>Tier</th>
+          <th class="center th-sort" data-col="ftes" onclick="sortBy('ftes')">FTEs</th>
+          <th class="center th-sort" data-col="growth" onclick="sortBy('growth')">HC Growth</th>
+          <th class="th-sort" data-col="score" onclick="sortBy('score')">ICP Score</th>
+          <th class="th-sort" data-col="tier" onclick="sortBy('tier')">Tier</th>
+          <th class="th-sort" data-col="last" onclick="sortBy('last')">Last Interaction</th>
           <th class="center">Recommendation</th>
         </tr>
       </thead>
-      <tbody>
-        <tr onclick="openMapa('dLocal',event)">
-          <td class="center"><span class="rank top">1</span></td>
-          <td><div class="company-name"><a href="https://www.linkedin.com/company/dlocal/" target="_blank" onclick="event.stopPropagation()">dLocal</a></div><div class="company-meta">Fintech · Payments</div></td>
-          <td class="center">1,415</td><td class="center">373</td>
-          <td class="center"><span class="growth-pos">+19.7%</span></td>
-          <td><div class="score-wrap"><span class="score-num" style="color:var(--accent)">90</span><div class="score-bar-bg"><div class="score-bar-fill fill-red" style="width:90%"></div></div></div></td>
-          <td><span class="badge badge-red">High</span></td>
-          <td class="center"><span class="badge badge-red">Engage</span></td>
-        </tr>
-        <tr onclick="openMapa('Wellhub',event)">
-          <td class="center"><span class="rank top">2</span></td>
-          <td><div class="company-name"><a href="https://www.linkedin.com/company/wellhub/" target="_blank" onclick="event.stopPropagation()">Wellhub</a></div><div class="company-meta">Benefits · Wellness</div></td>
-          <td class="center">2,285</td><td class="center">510</td>
-          <td class="center"><span class="growth-pos">+38.3%</span></td>
-          <td><div class="score-wrap"><span class="score-num" style="color:var(--accent)">88</span><div class="score-bar-bg"><div class="score-bar-fill fill-red" style="width:88%"></div></div></div></td>
-          <td><span class="badge badge-red">High</span></td>
-          <td class="center"><span class="badge badge-red">Engage</span></td>
-        </tr>
-        <tr onclick="openMapa('Clara',event)">
-          <td class="center"><span class="rank">3</span></td>
-          <td><div class="company-name"><a href="https://www.linkedin.com/company/claracc/" target="_blank" onclick="event.stopPropagation()">Clara</a></div><div class="company-meta">Fintech · Expenses</div></td>
-          <td class="center">612</td><td class="center">107</td>
-          <td class="center"><span class="growth-pos">+22.9%</span></td>
-          <td><div class="score-wrap"><span class="score-num" style="color:var(--yellow)">61</span><div class="score-bar-bg"><div class="score-bar-fill fill-yellow" style="width:61%"></div></div></div></td>
-          <td><span class="badge badge-yellow">Mid</span></td>
-          <td class="center"><span class="badge badge-yellow">Engage</span></td>
-        </tr>
-        <tr onclick="openMapa('Grão Direto',event)">
-          <td class="center"><span class="rank">4</span></td>
-          <td><div class="company-name"><a href="https://www.linkedin.com/company/graodireto/" target="_blank" onclick="event.stopPropagation()">Grão Direto</a></div><div class="company-meta">Agribusiness · Commodities</div></td>
-          <td class="center">191</td><td class="center">65</td>
-          <td class="center"><span class="growth-pos">+11.4%</span></td>
-          <td><div class="score-wrap"><span class="score-num" style="color:var(--muted)">48</span><div class="score-bar-bg"><div class="score-bar-fill fill-muted" style="width:48%"></div></div></div></td>
-          <td><span class="badge badge-muted">Low</span></td>
-          <td class="center"><span class="badge badge-muted">Monitor</span></td>
-        </tr>
-        <tr onclick="openMapa('Intelipost',event)">
-          <td class="center"><span class="rank">5</span></td>
-          <td><div class="company-name"><a href="https://www.linkedin.com/company/intelipost/" target="_blank" onclick="event.stopPropagation()">Intelipost</a></div><div class="company-meta">Logistics · SaaS</div></td>
-          <td class="center">254</td><td class="center">41</td>
-          <td class="center"><span class="growth-neg">-3.4%</span></td>
-          <td><div class="score-wrap"><span class="score-num" style="color:var(--muted)">48</span><div class="score-bar-bg"><div class="score-bar-fill fill-muted" style="width:48%"></div></div></div></td>
-          <td><span class="badge badge-muted">Low</span></td>
-          <td class="center"><span class="badge badge-muted">Engage</span></td>
-        </tr>
-        <tr onclick="openMapa('Swap',event)">
-          <td class="center"><span class="rank">6</span></td>
-          <td><div class="company-name"><a href="https://www.linkedin.com/company/swapfinancial/" target="_blank" onclick="event.stopPropagation()">Swap</a></div><div class="company-meta">Fintech · BaaS</div></td>
-          <td class="center">237</td><td class="center">88</td>
-          <td class="center"><span class="growth-pos">+32.8%</span></td>
-          <td><div class="score-wrap"><span class="score-num" style="color:var(--muted)">46</span><div class="score-bar-bg"><div class="score-bar-fill fill-muted" style="width:46%"></div></div></div></td>
-          <td><span class="badge badge-muted">Low</span></td>
-          <td class="center"><span class="badge badge-muted">Monitor</span></td>
-        </tr>
-        <tr onclick="openMapa('180 Seguros',event)">
-          <td class="center"><span class="rank">7</span></td>
-          <td><div class="company-name"><a href="https://www.linkedin.com/company/180-seguros/" target="_blank" onclick="event.stopPropagation()">180 Seguros</a></div><div class="company-meta">Insurtech</div></td>
-          <td class="center">119</td><td class="center">48</td>
-          <td class="center"><span class="growth-pos">+38.8%</span></td>
-          <td><div class="score-wrap"><span class="score-num" style="color:var(--muted)">42</span><div class="score-bar-bg"><div class="score-bar-fill fill-muted" style="width:42%"></div></div></div></td>
-          <td><span class="badge badge-muted">Low</span></td>
-          <td class="center"><span class="badge badge-muted">Monitor</span></td>
-        </tr>
-        <tr onclick="openMapa('Netlex',event)">
-          <td class="center"><span class="rank">8</span></td>
-          <td><div class="company-name"><a href="https://www.linkedin.com/company/netlex-io/" target="_blank" onclick="event.stopPropagation()">Netlex</a></div><div class="company-meta">Legal Tech</div></td>
-          <td class="center">259</td><td class="center">79</td>
-          <td class="center"><span class="growth-pos">+24.9%</span></td>
-          <td><div class="score-wrap"><span class="score-num" style="color:var(--muted)">42</span><div class="score-bar-bg"><div class="score-bar-fill fill-muted" style="width:42%"></div></div></div></td>
-          <td><span class="badge badge-muted">Low</span></td>
-          <td class="center"><span class="badge badge-muted">Monitor</span></td>
-        </tr>
-        <tr onclick="openMapa('Ascenty',event)">
-          <td class="center"><span class="rank">9</span></td>
-          <td><div class="company-name"><a href="https://www.linkedin.com/company/ascenty/" target="_blank" onclick="event.stopPropagation()">Ascenty</a></div><div class="company-meta">Data Centers · Infra</div></td>
-          <td class="center">910</td><td class="center">30</td>
-          <td class="center"><span class="growth-pos">+13.2%</span></td>
-          <td><div class="score-wrap"><span class="score-num" style="color:var(--muted)">39</span><div class="score-bar-bg"><div class="score-bar-fill fill-muted" style="width:39%"></div></div></div></td>
-          <td><span class="badge badge-muted">Very Low</span></td>
-          <td class="center"><span class="badge badge-muted">Monitor</span></td>
-        </tr>
-        <tr onclick="openMapa('Medway',event)">
-          <td class="center"><span class="rank">10</span></td>
-          <td><div class="company-name"><a href="https://www.linkedin.com/company/medway-educacao-medica/" target="_blank" onclick="event.stopPropagation()">Medway</a></div><div class="company-meta">Edtech · Health</div></td>
-          <td class="center">345</td><td class="center">42</td>
-          <td class="center"><span class="growth-pos">+19.9%</span></td>
-          <td><div class="score-wrap"><span class="score-num" style="color:var(--muted)">30</span><div class="score-bar-bg"><div class="score-bar-fill fill-muted" style="width:30%"></div></div></div></td>
-          <td><span class="badge badge-muted">Very Low</span></td>
-          <td class="center"><span class="badge badge-muted">Monitor</span></td>
-        </tr>
-        <tr class="disqualified" onclick="openMapa('Meli',event)">
-          <td class="center"><span class="rank">—</span></td>
-          <td><div class="company-name"><a href="https://www.linkedin.com/company/mercadolibre/" target="_blank" onclick="event.stopPropagation()">Meli</a></div><div class="company-meta">E-commerce · Fintech</div></td>
-          <td class="center">66,193</td><td class="center">11,496</td>
-          <td class="center"><span class="growth-pos">+33.5%</span></td>
-          <td><div class="score-wrap"><span class="score-num" style="color:var(--muted)">—</span></div></td>
-          <td><span class="badge badge-muted">Not ICP</span></td>
-          <td class="center"><span class="disq-reason">Too large (&gt;5k FTEs)</span></td>
-        </tr>
-        <tr class="disqualified" onclick="openMapa('Rivio',event)">
-          <td class="center"><span class="rank">—</span></td>
-          <td><div class="company-name"><a href="https://www.linkedin.com/company/riviotech/" target="_blank" onclick="event.stopPropagation()">Rivio</a></div><div class="company-meta">HR Tech</div></td>
-          <td class="center">102</td><td class="center">31</td>
-          <td class="center"><span class="growth-neu">0%</span></td>
-          <td><div class="score-wrap"><span class="score-num" style="color:var(--muted)">—</span></div></td>
-          <td><span class="badge badge-muted">Not ICP</span></td>
-          <td class="center"><span class="disq-reason">No growth signal</span></td>
-        </tr>
+      <tbody id="tbl-body">
       </tbody>
     </table>
   </div>
@@ -638,6 +513,107 @@ const COMPANIES = {
   'Meli':         { score:null, ftes:66193, pes:11496, growth:33.53, tier:'Not ICP',  rec:null, disq:'Too large (>5k FTEs)', segment:'E-commerce · Fintech', liSlug:'mercadolibre' },
   'Rivio':        { score:null, ftes:102,   pes:31,    growth:0,     tier:'Not ICP',  rec:null, disq:'No growth signal',    segment:'HR Tech',              liSlug:'riviotech' },
 };
+
+/* ══════════════════════════════════════════════════════════════
+   TABLE RENDER + SORT
+══════════════════════════════════════════════════════════════ */
+let _sortCol = 'score';
+let _sortDir = 'desc';
+const _lastIx = {};  // name → { date:'YYYY-MM-DD', person:'Name' }
+
+function tierOrder(t) {
+  return { 'High':1, 'Mid':2, 'Low':3, 'Very Low':4, 'Not ICP':5 }[t] ?? 6;
+}
+
+function sortBy(col) {
+  if (_sortCol === col) { _sortDir = _sortDir === 'asc' ? 'desc' : 'asc'; }
+  else { _sortCol = col; _sortDir = 'desc'; }
+  renderTable();
+}
+
+function renderTable() {
+  const names = Object.keys(COMPANIES);
+  names.sort((a, b) => {
+    const ca = COMPANIES[a], cb = COMPANIES[b];
+    // disqualified always at bottom regardless of sort
+    if (ca.disq && !cb.disq) return 1;
+    if (!ca.disq && cb.disq) return -1;
+    let va, vb;
+    if      (_sortCol === 'ftes')   { va = ca.ftes;               vb = cb.ftes; }
+    else if (_sortCol === 'growth') { va = ca.growth ?? -999;      vb = cb.growth ?? -999; }
+    else if (_sortCol === 'tier')   { va = tierOrder(ca.tier);     vb = tierOrder(cb.tier); }
+    else if (_sortCol === 'last')   { va = _lastIx[a]?.date || ''; vb = _lastIx[b]?.date || ''; }
+    else                            { va = ca.score ?? -1;         vb = cb.score ?? -1; }
+    if (va === vb) return 0;
+    return (_sortDir === 'asc' ? 1 : -1) * (va > vb ? 1 : -1);
+  });
+
+  let rank = 0;
+  document.getElementById('tbl-body').innerHTML = names.map(name => {
+    const c = COMPANIES[name];
+    const isDisq = !!c.disq;
+    if (!isDisq) rank++;
+    const scoreColor = (c.score ?? 0) >= 70 ? 'var(--accent)' : (c.score ?? 0) >= 50 ? 'var(--yellow)' : 'var(--muted)';
+    const fillCls    = (c.score ?? 0) >= 70 ? 'fill-red' : (c.score ?? 0) >= 50 ? 'fill-yellow' : 'fill-muted';
+    const tierBadge  = c.tier === 'High' ? 'badge-red' : c.tier === 'Mid' ? 'badge-yellow' : 'badge-muted';
+    const recBadge   = c.rec  === 'Engage' ? (c.tier === 'High' ? 'badge-red' : 'badge-yellow') : 'badge-muted';
+    const growthCls  = c.growth > 0 ? 'growth-pos' : c.growth < 0 ? 'growth-neg' : 'growth-neu';
+    const growthStr  = c.growth > 0 ? `+${c.growth}%` : `${c.growth}%`;
+    const rankEl     = isDisq ? `<span class="rank">—</span>` : rank <= 2 ? `<span class="rank top">${rank}</span>` : `<span class="rank">${rank}</span>`;
+    const ix = _lastIx[name];
+    const ixCell = ix
+      ? `<div class="ix-date">${fmtShort(ix.date)}</div><div class="ix-person">${esc(ix.person)}</div>`
+      : `<span class="spinner-sm" style="opacity:0.3"></span>`;
+    return `<tr${isDisq ? ' class="disqualified"' : ''} onclick="openMapa('${name.replace(/'/g,"\\'")}',event)">
+      <td class="center">${rankEl}</td>
+      <td>
+        <div class="company-name"><a href="https://www.linkedin.com/company/${c.liSlug}/" target="_blank" onclick="event.stopPropagation()">${esc(name)}</a></div>
+        <div class="company-meta">${esc(c.segment)}</div>
+      </td>
+      <td class="center">${c.ftes.toLocaleString('en')}</td>
+      <td class="center"><span class="${growthCls}">${growthStr}</span></td>
+      <td>${isDisq
+        ? '<div class="score-wrap"><span class="score-num" style="color:var(--muted)">—</span></div>'
+        : `<div class="score-wrap"><span class="score-num" style="color:${scoreColor}">${c.score}</span><div class="score-bar-bg"><div class="score-bar-fill ${fillCls}" style="width:${c.score}%"></div></div></div>`
+      }</td>
+      <td><span class="badge ${isDisq ? 'badge-muted' : tierBadge}">${esc(c.tier)}</span></td>
+      <td>${ixCell}</td>
+      <td class="center">${isDisq
+        ? `<span class="disq-reason">${esc(c.disq)}</span>`
+        : `<span class="badge ${recBadge}">${esc(c.rec)}</span>`
+      }</td>
+    </tr>`;
+  }).join('');
+
+  // Update sort indicators
+  document.querySelectorAll('.th-sort').forEach(th => {
+    th.classList.remove('asc', 'desc');
+    if (th.dataset.col === _sortCol) th.classList.add(_sortDir);
+  });
+}
+
+// Populate last interaction from Attio on page load
+function loadLastInteractions() {
+  ensureAttioData().then(() => {
+    let updated = false;
+    for (const [name, c] of Object.entries(COMPANIES)) {
+      if (c.disq) continue;
+      const recId = _coByLi[c.liSlug] || _coByName[name.toLowerCase()];
+      if (!recId) continue;
+      const people = _pByCoId[recId] || [];
+      let best = null;
+      for (const p of people) {
+        if (!p.last_meeting_date) continue;
+        if (!best || p.last_meeting_date > best.last_meeting_date) best = p;
+      }
+      if (best && !_lastIx[name]) {
+        _lastIx[name] = { date: best.last_meeting_date, person: best.name || '?' };
+        updated = true;
+      }
+    }
+    if (updated) renderTable();
+  }).catch(() => {});
+}
 
 /* ══════════════════════════════════════════════════════════════
    ATTIO CACHE (mirrors graph.py: fetch ALL, join in-memory)
@@ -1643,6 +1619,10 @@ async function generateBriefing(name) {
 
   if (currentName === name) renderPanelBody();
 }
+
+// ── Boot ──
+renderTable();
+loadLastInteractions();
 </script>
 </body>
 </html>
