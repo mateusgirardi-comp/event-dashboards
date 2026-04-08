@@ -34,6 +34,13 @@ def attio_post(path, body):
     r.raise_for_status()
     return r.json()
 
+def attio_get(path):
+    r = requests.get(f'{ATTIO_BASE}{path}',
+                     headers={'Authorization': f'Bearer {ATTIO_KEY}'},
+                     timeout=30)
+    r.raise_for_status()
+    return r.json()
+
 def norm_li(url):
     if not url: return None
     m = re.search(r'linkedin\.com/company/([^/?#]+)', str(url), re.I)
@@ -136,6 +143,14 @@ def parse_deal(deal):
         'lost_reason':    a_val(vals.get('lost_reason', [])),
     }
 
+# Hardcoded record IDs for companies with duplicates / ambiguous slugs.
+# These bypass the LinkedIn slug lookup entirely.
+RECORD_ID_OVERRIDES = {
+    'Wellhub':    '4482774e-eb31-42fe-ac6b-bdd348fda088',
+    'Clara':      'c72e0843-8051-54c5-9e46-3a54d8cc5315',
+    'Intelipost': 'fb3623b2-f0a3-5e68-834a-16b6599536a8',
+}
+
 # ── 1. Fetch the 12 companies by LinkedIn slug ────────────────
 
 print('Fetching companies…', flush=True)
@@ -144,6 +159,22 @@ name_to_id = {}
 
 for name, slug in COMPANIES.items():
     try:
+        if name in RECORD_ID_OVERRIDES:
+            # Fetch directly by known record ID
+            rid = RECORD_ID_OVERRIDES[name]
+            d = attio_get(f'/objects/companies/records/{rid}')
+            rec = d.get('data', d)  # some endpoints wrap in 'data'
+            vals = rec.get('values', {})
+            li = a_val(vals.get('linkedin', []))
+            nm = a_val(vals.get('name', []))
+            ls = a_val(vals.get('lifecycle_status', []), 'status')
+            co_by_id[rid]  = {'name': nm, 'linkedin': li, 'lifecycleStatus': ls}
+            co_by_li[slug] = rid
+            if nm: co_by_name[nm.lower()] = rid
+            name_to_id[name] = rid
+            print(f'  ✓ {name} (hardcoded ID)', flush=True)
+            continue
+
         d = attio_post('/objects/companies/records/query', {
             'limit': 5,
             'filter': {'linkedin': {'$contains': slug}}
