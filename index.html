@@ -116,6 +116,23 @@
     /* ── Last Interaction cell ── */
     .ix-date   { font-size:12px; font-weight:600; color:var(--text); }
     .ix-person { font-size:11px; color:var(--muted); margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; }
+    /* ── Deal status ── */
+    .ds-active { background:#dcfce7; color:#15803d; }
+    .ds-won    { background:#dbeafe; color:#1d4ed8; }
+    .ds-lost   { background:#fee2e2; color:#dc2626; }
+    .ds-none   { background:#f3f4f6; color:#9ca3af; }
+    /* ── Tier override ── */
+    .badge.overridden { outline:2px dashed currentColor; outline-offset:2px; }
+    .badge.overridden::after { content:'✎'; font-size:9px; margin-left:3px; opacity:0.6; }
+    /* ── Notes cell ── */
+    .notes-input {
+      font-size:12px; color:var(--text); font-family:inherit;
+      background:transparent; border:none; outline:none;
+      width:100%; min-width:120px; cursor:text;
+      padding:2px 4px; border-radius:4px;
+    }
+    .notes-input:focus { background:#f9fafb; outline:1px solid var(--border); }
+    .notes-input::placeholder { color:#ccc; font-style:italic; }
 
     /* ── Footer ── */
     footer { margin-top:8px; text-align:center; font-size:11px; color:var(--muted); padding-bottom:32px; }
@@ -479,7 +496,8 @@
           <th class="th-sort" data-col="score" onclick="sortBy('score')">ICP Score</th>
           <th class="th-sort" data-col="tier" onclick="sortBy('tier')">Tier</th>
           <th class="th-sort" data-col="last" onclick="sortBy('last')">Last Interaction</th>
-          <th class="center">Recommendation</th>
+          <th class="th-sort" data-col="status" onclick="sortBy('status')">Deal Status</th>
+          <th>Notes</th>
         </tr>
       </thead>
       <tbody id="tbl-body">
@@ -530,6 +548,37 @@ function tierOrder(t) {
   return { 'High':1, 'Mid':2, 'Low':3, 'Very Low':4, 'Not ICP':5 }[t] ?? 6;
 }
 
+/* ── Manual overrides (tier + notes) ── */
+const OV_KEY = 'event_overrides_v1';
+const _ov = (() => { try { return JSON.parse(localStorage.getItem(OV_KEY) || '{}'); } catch { return {}; } })();
+function _saveOv() { try { localStorage.setItem(OV_KEY, JSON.stringify(_ov)); } catch {} }
+
+const TIER_CYCLE = ['High','Mid','Low','Very Low','Not ICP'];
+function cycleTier(name, ev) {
+  ev.stopPropagation();
+  const cur = _ov[name]?.tier ?? COMPANIES[name].tier;
+  const next = TIER_CYCLE[(TIER_CYCLE.indexOf(cur) + 1) % TIER_CYCLE.length];
+  (_ov[name] = _ov[name] || {}).tier = next;
+  _saveOv(); renderTable();
+}
+function saveNote(name, val) {
+  (_ov[name] = _ov[name] || {}).notes = val;
+  _saveOv();
+}
+
+/* ── Deal status from baked data ── */
+const DS_ORDER = { active:1, won:2, lost:3, none:4 };
+function getDealStatus(name) {
+  const c = COMPANIES[name];
+  const recId = _coByLi?.[c.liSlug] || _coByName?.[name.toLowerCase()];
+  if (!recId || !_dByCoId) return 'none';
+  const deals = _dByCoId[recId] || [];
+  if (!deals.length) return 'none';
+  if (deals.some(d => d.date_won)) return 'won';
+  if (deals.some(d => !d.date_lost && !d.date_won)) return 'active';
+  return 'lost';
+}
+
 function sortBy(col) {
   if (_sortCol === col) { _sortDir = _sortDir === 'asc' ? 'desc' : 'asc'; }
   else { _sortCol = col; _sortDir = 'desc'; }
@@ -546,8 +595,9 @@ function renderTable() {
     let va, vb;
     if      (_sortCol === 'ftes')   { va = ca.ftes;               vb = cb.ftes; }
     else if (_sortCol === 'growth') { va = ca.growth ?? -999;      vb = cb.growth ?? -999; }
-    else if (_sortCol === 'tier')   { va = tierOrder(ca.tier);     vb = tierOrder(cb.tier); }
+    else if (_sortCol === 'tier')   { va = tierOrder(_ov[a]?.tier ?? ca.tier); vb = tierOrder(_ov[b]?.tier ?? cb.tier); }
     else if (_sortCol === 'last')   { va = _lastIx[a]?.date || ''; vb = _lastIx[b]?.date || ''; }
+    else if (_sortCol === 'status') { va = DS_ORDER[getDealStatus(a)] ?? 9; vb = DS_ORDER[getDealStatus(b)] ?? 9; }
     else                            { va = ca.score ?? -1;         vb = cb.score ?? -1; }
     if (va === vb) return 0;
     return (_sortDir === 'asc' ? 1 : -1) * (va > vb ? 1 : -1);
@@ -557,21 +607,37 @@ function renderTable() {
   document.getElementById('tbl-body').innerHTML = names.map(name => {
     const c = COMPANIES[name];
     const isDisq = !!c.disq;
-    if (!isDisq) rank++;
+    const effTier = _ov[name]?.tier ?? c.tier;
+    const isOverridden = !!_ov[name]?.tier;
+    if (!isDisq || effTier !== 'Not ICP') rank++;  // count overridden non-ICP as ranked
     const scoreColor = (c.score ?? 0) >= 70 ? 'var(--accent)' : (c.score ?? 0) >= 50 ? 'var(--yellow)' : 'var(--muted)';
     const fillCls    = (c.score ?? 0) >= 70 ? 'fill-red' : (c.score ?? 0) >= 50 ? 'fill-yellow' : 'fill-muted';
-    const tierBadge  = c.tier === 'High' ? 'badge-red' : c.tier === 'Mid' ? 'badge-yellow' : 'badge-muted';
-    const recBadge   = c.rec  === 'Engage' ? (c.tier === 'High' ? 'badge-red' : 'badge-yellow') : 'badge-muted';
+    const tierBadge  = effTier === 'High' ? 'badge-red' : effTier === 'Mid' ? 'badge-yellow' : 'badge-muted';
     const growthCls  = c.growth > 0 ? 'growth-pos' : c.growth < 0 ? 'growth-neg' : 'growth-neu';
     const growthStr  = c.growth > 0 ? `+${c.growth}%` : `${c.growth}%`;
-    const rankEl     = isDisq ? `<span class="rank">—</span>` : rank <= 2 ? `<span class="rank top">${rank}</span>` : `<span class="rank">${rank}</span>`;
-    const ix = _lastIx[name];  // undefined=pending, false=no data, object=has data
+    const effectiveDisq = effTier === 'Not ICP' && !isOverridden ? true : (c.disq && !isOverridden);
+    const rankEl = effectiveDisq ? `<span class="rank">—</span>` : rank <= 2 ? `<span class="rank top">${rank}</span>` : `<span class="rank">${rank}</span>`;
+
+    const ix = _lastIx[name];
     const ixCell = ix === undefined
       ? `<span class="spinner-sm" style="opacity:0.3"></span>`
       : ix
         ? `<div class="ix-date">${fmtShort(ix.date)}</div><div class="ix-person">${esc(ix.person)}</div>`
         : `<span style="color:var(--muted);font-size:11px">—</span>`;
-    return `<tr${isDisq ? ' class="disqualified"' : ''} onclick="openMapa('${name.replace(/'/g,"\\'")}',event)">
+
+    const ds = getDealStatus(name);
+    const dsLabel = { active:'Active Deal', won:'Won', lost:'Lost', none:'No Deal' }[ds];
+    const dsCls   = { active:'ds-active',   won:'ds-won', lost:'ds-lost', none:'ds-none' }[ds];
+    const dsCell  = `<span class="badge ${dsCls}">${dsLabel}</span>`;
+
+    const noteVal = esc(_ov[name]?.notes || '');
+    const noteCell = `<input class="notes-input" placeholder="Add note…" value="${noteVal}"
+      onclick="event.stopPropagation()"
+      onblur="saveNote('${name.replace(/'/g,"\\'")}', this.value)"
+      onkeydown="if(event.key==='Enter')this.blur()">`;
+
+    const nEsc = name.replace(/'/g,"\\'");
+    return `<tr${effectiveDisq ? ' class="disqualified"' : ''} onclick="openMapa('${nEsc}',event)">
       <td class="center">${rankEl}</td>
       <td>
         <div class="company-name"><a href="https://www.linkedin.com/company/${c.liSlug}/" target="_blank" onclick="event.stopPropagation()">${esc(name)}</a></div>
@@ -579,16 +645,20 @@ function renderTable() {
       </td>
       <td class="center">${c.ftes.toLocaleString('en')}</td>
       <td class="center"><span class="${growthCls}">${growthStr}</span></td>
-      <td>${isDisq
+      <td>${isDisq && !isOverridden
         ? '<div class="score-wrap"><span class="score-num" style="color:var(--muted)">—</span></div>'
-        : `<div class="score-wrap"><span class="score-num" style="color:${scoreColor}">${c.score}</span><div class="score-bar-bg"><div class="score-bar-fill ${fillCls}" style="width:${c.score}%"></div></div></div>`
+        : `<div class="score-wrap"><span class="score-num" style="color:${scoreColor}">${c.score ?? '—'}</span>${c.score != null ? `<div class="score-bar-bg"><div class="score-bar-fill ${fillCls}" style="width:${c.score}%"></div></div>` : ''}</div>`
       }</td>
-      <td><span class="badge ${isDisq ? 'badge-muted' : tierBadge}">${esc(c.tier)}</span></td>
+      <td>
+        <span class="badge ${tierBadge}${isOverridden ? ' overridden' : ''}"
+              onclick="cycleTier('${nEsc}',event)"
+              style="cursor:pointer" title="Click to change tier">
+          ${esc(effTier)}
+        </span>
+      </td>
       <td>${ixCell}</td>
-      <td class="center">${isDisq
-        ? `<span class="disq-reason">${esc(c.disq)}</span>`
-        : `<span class="badge ${recBadge}">${esc(c.rec)}</span>`
-      }</td>
+      <td>${dsCell}</td>
+      <td>${noteCell}</td>
     </tr>`;
   }).join('');
 
