@@ -453,7 +453,11 @@
     <div class="header-divider"></div>
     <span class="header-sub">Event Prioritization · Chris · Apr 2026</span>
   </div>
-  <div class="header-right">Tyrion · Apr 08, 2026</div>
+  <div class="header-right" style="display:flex;align-items:center;gap:10px">
+    <span id="refresh-status" style="font-size:11px;color:rgba(255,255,255,0.5)"></span>
+    <button id="refresh-btn" onclick="refreshAll()" style="font-size:11px;font-weight:600;color:#fff;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:6px;padding:5px 11px;cursor:pointer;font-family:inherit">↺ Refresh dados</button>
+    <span style="color:rgba(255,255,255,0.4)">Apr 08, 2026</span>
+  </div>
 </header>
 
 <main>
@@ -519,12 +523,7 @@ const COMPANIES = {
 ══════════════════════════════════════════════════════════════ */
 let _sortCol = 'score';
 let _sortDir = 'desc';
-const LAST_IX_KEY = 'event_lastix_v1';
-const LAST_IX_TTL = 4 * 60 * 60 * 1000;  // 4 hours
-const _lastIxStore = (() => { try { return JSON.parse(localStorage.getItem(LAST_IX_KEY) || 'null'); } catch { return null; } })();
-const _lastIxFresh = !!(_lastIxStore && Date.now() - _lastIxStore._ts < LAST_IX_TTL);
-const _lastIx = _lastIxFresh ? _lastIxStore.data : {};
-function _saveLastIx() { try { localStorage.setItem(LAST_IX_KEY, JSON.stringify({ _ts: Date.now(), data: _lastIx })); } catch {} }
+const _lastIx = {};  // computed from _pByCoId, never fetched independently
 
 function tierOrder(t) {
   return { 'High':1, 'Mid':2, 'Low':3, 'Very Low':4, 'Not ICP':5 }[t] ?? 6;
@@ -600,38 +599,75 @@ function renderTable() {
 }
 
 // Populate last interaction from Attio on page load
-function loadLastInteractions() {
-  // If cache is fresh (< 4h), skip Attio entirely — even if some entries are missing
-  if (_lastIxFresh) return;
-
-  ensureAttioData().then(() => {
-    for (const [name, c] of Object.entries(COMPANIES)) {
-      if (c.disq) continue;
-      const recId = _coByLi[c.liSlug] || _coByName[name.toLowerCase()];
-      if (!recId) { _lastIx[name] = false; continue; }
-      const people = _pByCoId[recId] || [];
-      let best = null;
-      for (const p of people) {
-        if (!p.last_meeting_date) continue;
-        if (!best || p.last_meeting_date > best.last_meeting_date) best = p;
-      }
-      // false = checked, no data — prevents re-fetch next load
-      _lastIx[name] = best ? { date: best.last_meeting_date, person: best.name || '?' } : false;
+function computeLastIx() {
+  for (const [name, c] of Object.entries(COMPANIES)) {
+    if (c.disq) continue;
+    const recId = _coByLi?.[c.liSlug] || _coByName?.[name.toLowerCase()];
+    if (!recId) { _lastIx[name] = false; continue; }
+    const people = _pByCoId?.[recId] || [];
+    let best = null;
+    for (const p of people) {
+      if (!p.last_meeting_date) continue;
+      if (!best || p.last_meeting_date > best.last_meeting_date) best = p;
     }
-    _saveLastIx();
+    _lastIx[name] = best ? { date: best.last_meeting_date, person: best.name || '?' } : false;
+  }
+}
+
+function loadLastInteractions() {
+  if (_coByLi && _pByCoId && _dByCoId) {
+    // Attio data already in memory (restored from localStorage) — compute synchronously
+    computeLastIx();
     renderTable();
-  }).catch(() => {});
+    return;
+  }
+  // First time: fetch from Attio
+  setRefreshStatus('Buscando dados do Attio…');
+  ensureAttioData().then(() => {
+    computeLastIx();
+    setRefreshStatus('');
+    renderTable();
+  }).catch(() => setRefreshStatus('Erro ao buscar dados'));
+}
+
+function setRefreshStatus(msg) {
+  const el = document.getElementById('refresh-status');
+  if (el) el.textContent = msg;
+}
+
+function refreshAll() {
+  const btn = document.getElementById('refresh-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  // Clear all caches
+  [ATTIO_STORE_KEY, FF_STORE_KEY].forEach(k => localStorage.removeItem(k));
+  _coByLi = null; _coByName = null; _coById = null; _pByCoId = null; _dByCoId = null; _fetchP = null;
+  Object.keys(_ffCache).forEach(k => delete _ffCache[k]);
+  Object.keys(_lastIx).forEach(k => delete _lastIx[k]);
+  setRefreshStatus('Atualizando…');
+  ensureAttioData().then(() => {
+    computeLastIx();
+    renderTable();
+    setRefreshStatus('Atualizado ✓');
+    setTimeout(() => setRefreshStatus(''), 3000);
+  }).catch(e => {
+    setRefreshStatus('Erro: ' + e.message);
+  }).finally(() => {
+    if (btn) { btn.disabled = false; btn.textContent = '↺ Refresh dados'; }
+  });
 }
 
 /* ══════════════════════════════════════════════════════════════
-   ATTIO CACHE (mirrors graph.py: fetch ALL, join in-memory)
+   ATTIO CACHE — stored in localStorage, never auto-re-fetched
 ══════════════════════════════════════════════════════════════ */
-let _coByLi   = null;   // normalized_slug → record_id
-let _coByName = null;   // lower_name → record_id
-let _coById   = null;   // record_id → { name, linkedin, lifecycleStatus }
-let _pByCoId  = null;   // record_id → [enriched person objects]
-let _dByCoId  = null;   // record_id → [deal objects]
-let _fetchP   = null;   // singleton promise
+const ATTIO_STORE_KEY = 'event_attio_v1';
+const FF_STORE_KEY    = 'event_ff_v1';
+const _attioStored = (() => { try { return JSON.parse(localStorage.getItem(ATTIO_STORE_KEY) || 'null'); } catch { return null; } })();
+let _coByLi   = _attioStored?.coByLi   || null;
+let _coByName = _attioStored?.coByName  || null;
+let _coById   = _attioStored?.coById    || null;
+let _pByCoId  = _attioStored?.pByCoId   || null;
+let _dByCoId  = _attioStored?.dByCoId   || null;
+let _fetchP   = (_coByLi && _pByCoId && _dByCoId) ? Promise.resolve() : null;
 const BRIEF_STORE_KEY = 'event_briefings_v1';
 const _briefCache = (() => { try { return JSON.parse(localStorage.getItem(BRIEF_STORE_KEY) || '{}'); } catch { return {}; } })();
 function _saveBriefings() {
@@ -829,13 +865,21 @@ async function ensureAttioData() {
         }
       }
     } catch(e) { console.error('deals fetch:', e); }
+
+    // Persist everything to localStorage
+    try {
+      localStorage.setItem(ATTIO_STORE_KEY, JSON.stringify({
+        coByLi: _coByLi, coByName: _coByName, coById: _coById,
+        pByCoId: _pByCoId, dByCoId: _dByCoId,
+      }));
+    } catch(e) { console.warn('Could not save Attio cache:', e); }
   })();
 
   await _fetchP;
 }
 
-// Fireflies per-company cache
-const _ffCache = {};
+// Fireflies per-company cache — loaded from localStorage
+const _ffCache = (() => { try { return JSON.parse(localStorage.getItem(FF_STORE_KEY) || '{}'); } catch { return {}; } })();
 async function fetchFireflies(companyName) {
   if (_ffCache[companyName] !== undefined) return _ffCache[companyName];
   try {
@@ -859,6 +903,7 @@ async function fetchFireflies(companyName) {
       attendees: (t.meeting_attendees || []).map(a => ({ name: a.displayName, email: a.email })),
     })).sort((a,b) => (b.date||'').localeCompare(a.date||''));
     _ffCache[companyName] = meetings;
+    try { localStorage.setItem(FF_STORE_KEY, JSON.stringify(_ffCache)); } catch {}
     return meetings;
   } catch(e) { _ffCache[companyName] = []; return []; }
 }
