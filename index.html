@@ -519,7 +519,10 @@ const COMPANIES = {
 ══════════════════════════════════════════════════════════════ */
 let _sortCol = 'score';
 let _sortDir = 'desc';
-const _lastIx = {};  // name → { date:'YYYY-MM-DD', person:'Name' }
+const LAST_IX_KEY = 'event_lastix_v1';
+const LAST_IX_TTL = 4 * 60 * 60 * 1000;  // 4 hours
+const _lastIx = (() => { try { const s = JSON.parse(localStorage.getItem(LAST_IX_KEY) || 'null'); return (s && Date.now() - s._ts < LAST_IX_TTL) ? s.data : {}; } catch { return {}; } })();
+function _saveLastIx() { try { localStorage.setItem(LAST_IX_KEY, JSON.stringify({ _ts: Date.now(), data: _lastIx })); } catch {} }
 
 function tierOrder(t) {
   return { 'High':1, 'Mid':2, 'Low':3, 'Very Low':4, 'Not ICP':5 }[t] ?? 6;
@@ -594,10 +597,14 @@ function renderTable() {
 
 // Populate last interaction from Attio on page load
 function loadLastInteractions() {
+  // Check if all non-disq companies already have cached data
+  const needsFetch = Object.entries(COMPANIES).some(([n, c]) => !c.disq && !_lastIx[n]);
+  if (!needsFetch) return;  // all cached, skip Attio call
+
   ensureAttioData().then(() => {
     let updated = false;
     for (const [name, c] of Object.entries(COMPANIES)) {
-      if (c.disq) continue;
+      if (c.disq || _lastIx[name]) continue;
       const recId = _coByLi[c.liSlug] || _coByName[name.toLowerCase()];
       if (!recId) continue;
       const people = _pByCoId[recId] || [];
@@ -606,12 +613,12 @@ function loadLastInteractions() {
         if (!p.last_meeting_date) continue;
         if (!best || p.last_meeting_date > best.last_meeting_date) best = p;
       }
-      if (best && !_lastIx[name]) {
+      if (best) {
         _lastIx[name] = { date: best.last_meeting_date, person: best.name || '?' };
         updated = true;
       }
     }
-    if (updated) renderTable();
+    if (updated) { _saveLastIx(); renderTable(); }
   }).catch(() => {});
 }
 
